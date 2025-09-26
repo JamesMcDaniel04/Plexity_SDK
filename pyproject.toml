@@ -1,0 +1,18 @@
+[project]
+name = "sprintiq-sdk"
+version = "0.1.0"
+description = "Python SDK for SprintIQ Agentic RAG Orchestrator"
+requires-python = ">=3.9"
+readme = "README.md"
+authors = [{ name = "SprintIQ", email = "support@sprintiq.ai" }]
+dependencies = [
+  "requests>=2.32.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/sprintiq/agentic-rag-orchestrator"
+Documentation = "https://github.com/sprintiq/agentic-rag-orchestrator/tree/main/docs"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
