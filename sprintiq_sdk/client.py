@@ -66,6 +66,100 @@ class SprintIQClient:
     def delete_workflow(self, workflow_id: str) -> Any:
         return self._request("DELETE", f"/workflows/{self._encode(workflow_id)}")
 
+    # Team integrations -------------------------------------------------------
+    def get_team_integration_meta(self) -> Any:
+        return self._request("GET", "/team-delegation/integrations/meta")
+
+    def list_team_integration_apps(self, *, team_id: Optional[str] = None) -> Any:
+        params: Dict[str, str] = {}
+        if team_id:
+            params["team_id"] = team_id
+        resp = self._request("GET", "/team-delegation/integrations/apps", params=params or None)
+        return resp.get("apps", []) if isinstance(resp, dict) else resp
+
+    def create_team_integration_app(self, payload: Dict[str, Any]) -> Any:
+        resp = self._request("POST", "/team-delegation/integrations/apps", json_payload=payload)
+        return resp.get("app") if isinstance(resp, dict) else resp
+
+    def update_team_integration_app(self, app_id: str, payload: Dict[str, Any]) -> Any:
+        resp = self._request(
+            "PATCH",
+            f"/team-delegation/integrations/apps/{self._encode(app_id)}",
+            json_payload=payload,
+        )
+        return resp.get("app") if isinstance(resp, dict) else resp
+
+    def delete_team_integration_app(self, app_id: str) -> None:
+        self._request("DELETE", f"/team-delegation/integrations/apps/{self._encode(app_id)}")
+
+    def list_team_integration_webhooks(self, app_id: str) -> Any:
+        resp = self._request(
+            "GET",
+            f"/team-delegation/integrations/apps/{self._encode(app_id)}/webhooks",
+        )
+        return resp.get("webhooks", []) if isinstance(resp, dict) else resp
+
+    def register_team_integration_webhook(self, app_id: str, payload: Dict[str, Any]) -> Any:
+        resp = self._request(
+            "POST",
+            f"/team-delegation/integrations/apps/{self._encode(app_id)}/webhooks",
+            json_payload=payload,
+        )
+        return resp.get("webhook") if isinstance(resp, dict) else resp
+
+    def update_team_integration_webhook(self, webhook_id: str, payload: Dict[str, Any]) -> Any:
+        resp = self._request(
+            "PATCH",
+            f"/team-delegation/integrations/webhooks/{self._encode(webhook_id)}",
+            json_payload=payload,
+        )
+        return resp.get("webhook") if isinstance(resp, dict) else resp
+
+    def delete_team_integration_webhook(self, webhook_id: str) -> None:
+        self._request("DELETE", f"/team-delegation/integrations/webhooks/{self._encode(webhook_id)}")
+
+    def list_team_integration_plugins(self, app_id: str) -> Any:
+        resp = self._request(
+            "GET",
+            f"/team-delegation/integrations/apps/{self._encode(app_id)}/plugins",
+        )
+        return resp.get("plugins", []) if isinstance(resp, dict) else resp
+
+    def register_team_integration_plugin(self, app_id: str, payload: Dict[str, Any]) -> Any:
+        resp = self._request(
+            "POST",
+            f"/team-delegation/integrations/apps/{self._encode(app_id)}/plugins",
+            json_payload=payload,
+        )
+        return resp.get("plugin") if isinstance(resp, dict) else resp
+
+    def update_team_integration_plugin(self, plugin_id: str, payload: Dict[str, Any]) -> Any:
+        resp = self._request(
+            "PATCH",
+            f"/team-delegation/integrations/plugins/{self._encode(plugin_id)}",
+            json_payload=payload,
+        )
+        return resp.get("plugin") if isinstance(resp, dict) else resp
+
+    def delete_team_integration_plugin(self, plugin_id: str) -> None:
+        self._request("DELETE", f"/team-delegation/integrations/plugins/{self._encode(plugin_id)}")
+
+    def list_team_integration_events(self, *, team_id: Optional[str] = None, limit: Optional[int] = None) -> Any:
+        params: Dict[str, str] = {}
+        if team_id:
+            params["team_id"] = team_id
+        if limit is not None:
+            params["limit"] = str(limit)
+        resp = self._request("GET", "/team-delegation/integrations/events", params=params or None)
+        return resp.get("events", []) if isinstance(resp, dict) else resp
+
+    def emit_team_integration_test(self, app_id: str, payload: Dict[str, Any]) -> Any:
+        return self._request(
+            "POST",
+            f"/team-delegation/integrations/apps/{self._encode(app_id)}/test",
+            json_payload=payload,
+        )
+
     # Executions ----------------------------------------------------------------
     def list_executions(
         self,
