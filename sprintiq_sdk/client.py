@@ -160,6 +160,43 @@ class SprintIQClient:
             json_payload=payload,
         )
 
+    # GraphRAG telemetry -----------------------------------------------------
+
+    def record_graphrag_entity_events(self, events: Any) -> int:
+        payload = self._wrap_events(events)
+        res = self._request("POST", "/graphrag/ingest/entity", json_payload=payload)
+        return int(res.get("accepted", len(payload["events"]))) if isinstance(res, dict) else len(payload["events"])
+
+    def record_graphrag_relationship_events(self, events: Any) -> int:
+        payload = self._wrap_events(events)
+        res = self._request("POST", "/graphrag/ingest/relationship", json_payload=payload)
+        return int(res.get("accepted", len(payload["events"]))) if isinstance(res, dict) else len(payload["events"])
+
+    def record_graphrag_community_events(self, events: Any) -> int:
+        payload = self._wrap_events(events)
+        res = self._request("POST", "/graphrag/ingest/community", json_payload=payload)
+        return int(res.get("accepted", len(payload["events"]))) if isinstance(res, dict) else len(payload["events"])
+
+    def record_graphrag_query_coverage(self, events: Any) -> int:
+        payload = self._wrap_events(events)
+        res = self._request("POST", "/graphrag/ingest/query", json_payload=payload)
+        return int(res.get("accepted", len(payload["events"]))) if isinstance(res, dict) else len(payload["events"])
+
+    def record_graphrag_indexing_operations(self, events: Any) -> int:
+        payload = self._wrap_events(events)
+        res = self._request("POST", "/graphrag/ingest/indexing", json_payload=payload)
+        return int(res.get("accepted", len(payload["events"]))) if isinstance(res, dict) else len(payload["events"])
+
+    def record_graphrag_schema_snapshots(self, events: Any) -> int:
+        payload = self._wrap_events(events)
+        res = self._request("POST", "/graphrag/ingest/schema", json_payload=payload)
+        return int(res.get("accepted", len(payload["events"]))) if isinstance(res, dict) else len(payload["events"])
+
+    def record_graphrag_topology_snapshots(self, events: Any) -> int:
+        payload = self._wrap_events(events)
+        res = self._request("POST", "/graphrag/ingest/topology", json_payload=payload)
+        return int(res.get("accepted", len(payload["events"]))) if isinstance(res, dict) else len(payload["events"])
+
     # Executions ----------------------------------------------------------------
     def list_executions(
         self,
@@ -263,6 +300,17 @@ class SprintIQClient:
             return json.loads(response.text)
         except json.JSONDecodeError:
             return response.text
+
+    @staticmethod
+    def _wrap_events(events: Any) -> Dict[str, Any]:
+        if isinstance(events, dict):
+            return {"events": [events]}
+        if isinstance(events, list):
+            return {"events": events}
+        if hasattr(events, "__iter__"):
+            materialised = list(events)
+            return {"events": materialised}
+        raise ValueError("events must be iterable dictionaries or a single dictionary")
 
     def _build_url(self, path: str) -> str:
         if path.startswith("http://") or path.startswith("https://"):
