@@ -6,7 +6,7 @@ from .webhooks import (
     extract_webhook_request,
     verify_webhook_signature,
 )
-from .graphrag import GraphRAGTelemetry, ensure_microsoft_graphrag_runtime
+from .graphrag import GraphRAGClient, GraphRAGTelemetry, ensure_microsoft_graphrag_runtime
 
 __all__ = [
     "SprintIQClient",
@@ -14,6 +14,7 @@ __all__ = [
     "compute_webhook_signature",
     "verify_webhook_signature",
     "extract_webhook_request",
+    "GraphRAGClient",
     "GraphRAGTelemetry",
     "ensure_microsoft_graphrag_runtime",
 ]

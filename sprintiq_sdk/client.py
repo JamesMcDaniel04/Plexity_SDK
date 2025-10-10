@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 import requests
 
@@ -197,6 +197,205 @@ class SprintIQClient:
         res = self._request("POST", "/graphrag/ingest/topology", json_payload=payload)
         return int(res.get("accepted", len(payload["events"]))) if isinstance(res, dict) else len(payload["events"])
 
+    # GraphRAG operations -------------------------------------------------------
+    def search_graphrag(
+        self,
+        query: str,
+        *,
+        search_type: Optional[str] = None,
+        max_tokens: Optional[int] = None,
+        max_communities: Optional[int] = None,
+        max_entities: Optional[int] = None,
+        evaluate: Optional[bool] = None,
+        disable_evaluation: Optional[bool] = None,
+        org_id: Optional[str] = None,
+        team_id: Optional[str] = None,
+        environment: Optional[str] = None,
+        config_overrides: Optional[Dict[str, Any]] = None,
+        engine: Optional[str] = None,
+        use_microsoft_cli: Optional[bool] = None,
+        microsoft_cli: Optional[Dict[str, Any]] = None,
+    ) -> Any:
+        text = (query or "").strip()
+        if not text:
+            raise ValueError("query is required")
+
+        payload: Dict[str, Any] = {"query": text}
+        if search_type:
+            normalized = search_type.lower()
+            if normalized not in {"local", "global", "hybrid"}:
+                raise ValueError("search_type must be one of 'local', 'global', or 'hybrid'")
+            payload["search_type"] = normalized
+        if max_tokens is not None:
+            payload["max_tokens"] = int(max_tokens)
+        if max_communities is not None:
+            payload["max_communities"] = int(max_communities)
+        if max_entities is not None:
+            payload["max_entities"] = int(max_entities)
+        if evaluate is not None:
+            payload["evaluate"] = bool(evaluate)
+        if disable_evaluation is not None:
+            payload["disable_evaluation"] = bool(disable_evaluation)
+
+        self._apply_graphrag_context(payload, org_id, team_id, environment)
+
+        overrides = self._build_graphrag_config_overrides(
+            config_overrides,
+            engine=engine,
+            use_microsoft_cli=use_microsoft_cli,
+            microsoft_cli=microsoft_cli,
+        )
+        if overrides:
+            payload["config_overrides"] = overrides
+
+        return self._request("POST", "/graphrag/search", json_payload=payload)
+
+    def index_graphrag(
+        self,
+        documents: Iterable[Dict[str, Any]],
+        *,
+        org_id: Optional[str] = None,
+        team_id: Optional[str] = None,
+        environment: Optional[str] = None,
+        mode: Optional[str] = None,
+        chunk_size: Optional[int] = None,
+        chunk_overlap: Optional[int] = None,
+        embedding_model: Optional[str] = None,
+        llm_model: Optional[str] = None,
+        detect_changes: Optional[bool] = None,
+        detect_deletions: Optional[bool] = None,
+        invalidate_stale: Optional[bool] = None,
+        force_reindex: Optional[bool] = None,
+        skip_unchanged: Optional[bool] = None,
+        schema_version: Optional[str] = None,
+        document_ids: Optional[Iterable[str]] = None,
+        config_overrides: Optional[Dict[str, Any]] = None,
+    ) -> Any:
+        payload = self._prepare_graphrag_index_payload(
+            documents,
+            org_id=org_id,
+            team_id=team_id,
+            environment=environment,
+            mode=mode,
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            embedding_model=embedding_model,
+            llm_model=llm_model,
+            detect_changes=detect_changes,
+            detect_deletions=detect_deletions,
+            invalidate_stale=invalidate_stale,
+            force_reindex=force_reindex,
+            skip_unchanged=skip_unchanged,
+            schema_version=schema_version,
+            document_ids=document_ids,
+            config_overrides=config_overrides,
+        )
+        return self._request("POST", "/graphrag/index", json_payload=payload)
+
+    def incremental_index_graphrag(
+        self,
+        documents: Iterable[Dict[str, Any]],
+        *,
+        org_id: Optional[str] = None,
+        team_id: Optional[str] = None,
+        environment: Optional[str] = None,
+        mode: Optional[str] = "incremental",
+        chunk_size: Optional[int] = None,
+        chunk_overlap: Optional[int] = None,
+        embedding_model: Optional[str] = None,
+        llm_model: Optional[str] = None,
+        detect_changes: Optional[bool] = None,
+        detect_deletions: Optional[bool] = None,
+        invalidate_stale: Optional[bool] = None,
+        force_reindex: Optional[bool] = None,
+        skip_unchanged: Optional[bool] = None,
+        schema_version: Optional[str] = None,
+        document_ids: Optional[Iterable[str]] = None,
+        config_overrides: Optional[Dict[str, Any]] = None,
+    ) -> Any:
+        payload = self._prepare_graphrag_index_payload(
+            documents,
+            org_id=org_id,
+            team_id=team_id,
+            environment=environment,
+            mode=mode or "incremental",
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            embedding_model=embedding_model,
+            llm_model=llm_model,
+            detect_changes=detect_changes,
+            detect_deletions=detect_deletions,
+            invalidate_stale=invalidate_stale,
+            force_reindex=force_reindex,
+            skip_unchanged=skip_unchanged,
+            schema_version=schema_version,
+            document_ids=document_ids,
+            config_overrides=config_overrides,
+        )
+        return self._request("POST", "/graphrag/incremental-index", json_payload=payload)
+
+    def get_graphrag_stats(
+        self,
+        *,
+        org_id: Optional[str] = None,
+        team_id: Optional[str] = None,
+        environment: Optional[str] = None,
+    ) -> Any:
+        params = self._graphrag_context_query(org_id, team_id, environment)
+        return self._request("GET", "/graphrag/stats", params=params)
+
+    def get_graphrag_entities(
+        self,
+        *,
+        query: Optional[str] = None,
+        limit: Optional[int] = None,
+        include_neighbors: Optional[bool] = None,
+        max_hops: Optional[int] = None,
+        entity_types: Optional[Iterable[str]] = None,
+        org_id: Optional[str] = None,
+        team_id: Optional[str] = None,
+        environment: Optional[str] = None,
+    ) -> Any:
+        params = self._graphrag_context_query(org_id, team_id, environment)
+        if query:
+            params["query"] = query
+        if limit is not None:
+            params["limit"] = str(int(limit))
+        if include_neighbors is not None:
+            params["include_neighbors"] = self._bool_to_str(include_neighbors)
+        if max_hops is not None:
+            params["max_hops"] = str(int(max_hops))
+        if entity_types:
+            values = [str(value) for value in entity_types]
+            if values:
+                params["entity_types"] = ",".join(values) if len(values) > 1 else values[0]
+        return self._request("GET", "/graphrag/entities", params=params)
+
+    def get_graphrag_communities(
+        self,
+        *,
+        query: Optional[str] = None,
+        limit: Optional[int] = None,
+        min_size: Optional[int] = None,
+        max_size: Optional[int] = None,
+        level: Optional[int] = None,
+        org_id: Optional[str] = None,
+        team_id: Optional[str] = None,
+        environment: Optional[str] = None,
+    ) -> Any:
+        params = self._graphrag_context_query(org_id, team_id, environment)
+        if query:
+            params["query"] = query
+        if limit is not None:
+            params["limit"] = str(int(limit))
+        if min_size is not None:
+            params["min_size"] = str(int(min_size))
+        if max_size is not None:
+            params["max_size"] = str(int(max_size))
+        if level is not None:
+            params["level"] = str(int(level))
+        return self._request("GET", "/graphrag/communities", params=params)
+
     # Executions ----------------------------------------------------------------
     def list_executions(
         self,
@@ -300,6 +499,136 @@ class SprintIQClient:
             return json.loads(response.text)
         except json.JSONDecodeError:
             return response.text
+
+    def _prepare_graphrag_index_payload(
+        self,
+        documents: Iterable[Dict[str, Any]],
+        *,
+        org_id: Optional[str],
+        team_id: Optional[str],
+        environment: Optional[str],
+        mode: Optional[str],
+        chunk_size: Optional[int],
+        chunk_overlap: Optional[int],
+        embedding_model: Optional[str],
+        llm_model: Optional[str],
+        detect_changes: Optional[bool],
+        detect_deletions: Optional[bool],
+        invalidate_stale: Optional[bool],
+        force_reindex: Optional[bool],
+        skip_unchanged: Optional[bool],
+        schema_version: Optional[str],
+        document_ids: Optional[Iterable[str]],
+        config_overrides: Optional[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        doc_list: List[Dict[str, Any]] = [dict(item) for item in documents]
+        if not doc_list and not document_ids:
+            raise ValueError("documents or document_ids are required")
+
+        payload: Dict[str, Any] = {}
+        if doc_list:
+            payload["documents"] = doc_list
+
+        self._apply_graphrag_context(payload, org_id, team_id, environment)
+
+        if mode:
+            payload["mode"] = mode
+        if chunk_size is not None:
+            payload["chunk_size"] = int(chunk_size)
+        if chunk_overlap is not None:
+            payload["chunk_overlap"] = int(chunk_overlap)
+        if embedding_model:
+            payload["embedding_model"] = embedding_model
+        if llm_model:
+            payload["llm_model"] = llm_model
+        if detect_changes is not None:
+            payload["detect_changes"] = bool(detect_changes)
+        if detect_deletions is not None:
+            payload["detect_deletions"] = bool(detect_deletions)
+        if invalidate_stale is not None:
+            payload["invalidate_stale"] = bool(invalidate_stale)
+        if force_reindex is not None:
+            payload["force_reindex"] = bool(force_reindex)
+        if skip_unchanged is not None:
+            payload["skip_unchanged"] = bool(skip_unchanged)
+        if schema_version:
+            payload["schema_version"] = schema_version
+        if document_ids is not None:
+            payload["document_ids"] = [str(value) for value in document_ids]
+
+        overrides = self._build_graphrag_config_overrides(
+            config_overrides,
+            engine=None,
+            use_microsoft_cli=None,
+            microsoft_cli=None,
+        )
+        if overrides:
+            payload["config_overrides"] = overrides
+
+        return payload
+
+    def _build_graphrag_config_overrides(
+        self,
+        config_overrides: Optional[Dict[str, Any]],
+        *,
+        engine: Optional[str],
+        use_microsoft_cli: Optional[bool],
+        microsoft_cli: Optional[Dict[str, Any]],
+    ) -> Optional[Dict[str, Any]]:
+        overrides: Dict[str, Any] = dict(config_overrides or {})
+        engine_setting: Optional[str]
+        if engine:
+            engine_setting = engine
+        elif use_microsoft_cli is True:
+            engine_setting = "microsoft"
+        elif use_microsoft_cli is False:
+            engine_setting = "native"
+        else:
+            engine_setting = None
+
+        if engine_setting:
+            overrides["engine"] = engine_setting
+
+        if microsoft_cli:
+            existing = overrides.get("microsoft")
+            merged = dict(existing) if isinstance(existing, dict) else {}
+            merged.update(microsoft_cli)
+            overrides["microsoft"] = merged
+
+        return overrides or None
+
+    @staticmethod
+    def _apply_graphrag_context(
+        payload: Dict[str, Any],
+        org_id: Optional[str],
+        team_id: Optional[str],
+        environment: Optional[str],
+    ) -> None:
+        if org_id:
+            payload["org_id"] = org_id
+        if team_id is not None:
+            payload["team_id"] = team_id
+        if environment:
+            payload["environment"] = environment
+
+    @staticmethod
+    def _graphrag_context_query(
+        org_id: Optional[str],
+        team_id: Optional[str],
+        environment: Optional[str],
+    ) -> Dict[str, str]:
+        params: Dict[str, str] = {}
+        if org_id:
+            params["org_id"] = org_id
+        if team_id is not None:
+            params["team_id"] = str(team_id)
+        if environment:
+            params["environment"] = environment
+        return params
+
+    @staticmethod
+    def _bool_to_str(value: bool) -> str:
+        return "true" if value else "false"
 
     @staticmethod
     def _wrap_events(events: Any) -> Dict[str, Any]:

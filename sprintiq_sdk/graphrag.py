@@ -11,6 +11,7 @@ from typing import Any, Dict, Iterable, Optional, Sequence
 from .client import SprintIQClient
 
 __all__ = [
+    "GraphRAGClient",
     "GraphRAGTelemetry",
     "ensure_microsoft_graphrag_runtime"
 ]
@@ -79,6 +80,79 @@ class GraphRAGTelemetry:
             if "workflowExecutionId" not in enriched and self._context.workflow_execution_id:
                 enriched["workflowExecutionId"] = self._context.workflow_execution_id
         return enriched
+
+
+class GraphRAGClient:
+    """Convenience wrapper around :class:`SprintIQClient` for GraphRAG operations."""
+
+    def __init__(
+        self,
+        client: SprintIQClient,
+        *,
+        org_id: Optional[str] = None,
+        environment: str = "prod",
+        team_id: Optional[str] = None,
+    ) -> None:
+        self._client = client
+        self._org_id = org_id
+        self._environment = environment
+        self._team_id = team_id
+
+    @property
+    def context(self) -> Dict[str, Optional[str]]:
+        return {
+            "org_id": self._org_id,
+            "environment": self._environment,
+            "team_id": self._team_id,
+        }
+
+    def update_context(
+        self,
+        *,
+        org_id: Optional[str] = None,
+        environment: Optional[str] = None,
+        team_id: Optional[str] = None,
+    ) -> None:
+        if org_id is not None:
+            self._org_id = org_id
+        if environment is not None:
+            self._environment = environment
+        if team_id is not None:
+            self._team_id = team_id
+
+    def search(self, query: str, **options: Any) -> Any:
+        merged = self._merge_context(options)
+        return self._client.search_graphrag(query, **merged)
+
+    def index_documents(self, documents: Iterable[Dict[str, Any]], **options: Any) -> Any:
+        merged = self._merge_context(options)
+        return self._client.index_graphrag(documents, **merged)
+
+    def incremental_index(self, documents: Iterable[Dict[str, Any]], **options: Any) -> Any:
+        merged = self._merge_context(options)
+        return self._client.incremental_index_graphrag(documents, **merged)
+
+    def stats(self, **options: Any) -> Any:
+        merged = self._merge_context(options)
+        return self._client.get_graphrag_stats(**merged)
+
+    def entities(self, **options: Any) -> Any:
+        merged = self._merge_context(options)
+        return self._client.get_graphrag_entities(**merged)
+
+    def communities(self, **options: Any) -> Any:
+        merged = self._merge_context(options)
+        return self._client.get_graphrag_communities(**merged)
+
+    def _merge_context(self, overrides: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        merged: Dict[str, Any] = dict(overrides or {})
+        if self._org_id and "org_id" not in merged:
+            merged["org_id"] = self._org_id
+        if self._environment and "environment" not in merged:
+            merged["environment"] = self._environment
+        if self._team_id is not None and "team_id" not in merged:
+            merged["team_id"] = self._team_id
+        return merged
 
 
 def ensure_microsoft_graphrag_runtime(
