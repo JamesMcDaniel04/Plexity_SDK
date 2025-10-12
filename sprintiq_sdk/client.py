@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Union
 
 import requests
 
@@ -196,6 +196,680 @@ class SprintIQClient:
         payload = self._wrap_events(events)
         res = self._request("POST", "/graphrag/ingest/topology", json_payload=payload)
         return int(res.get("accepted", len(payload["events"]))) if isinstance(res, dict) else len(payload["events"])
+
+    # Context memory & MCP ------------------------------------------------------
+
+    def list_context_entries(
+        self,
+        *,
+        page: Optional[int] = None,
+        limit: Optional[int] = None,
+        tag: Optional[str] = None,
+        priority: Optional[str] = None,
+        search: Optional[str] = None,
+        include_inactive: Optional[bool] = None,
+    ) -> Any:
+        params: Dict[str, str] = {}
+        if page is not None:
+            params["page"] = str(int(page))
+        if limit is not None:
+            params["limit"] = str(int(limit))
+        if tag:
+            params["tag"] = tag
+        if priority:
+            params["priority"] = priority
+        if search:
+            params["search"] = search
+        if include_inactive is not None:
+            params["include_inactive"] = self._bool_to_str(include_inactive)
+        return self._request("GET", "/context", params=params or None)
+
+    def create_context_entry(
+        self,
+        *,
+        title: str,
+        content: str,
+        description: Optional[str] = None,
+        entry_type: Optional[str] = None,
+        tags: Optional[Iterable[str]] = None,
+        priority: Optional[str] = None,
+    ) -> Any:
+        body: Dict[str, Any] = {
+            "title": (title or "").strip(),
+            "content": (content or "").strip(),
+        }
+        if not body["title"]:
+            raise ValueError("title is required")
+        if not body["content"]:
+            raise ValueError("content is required")
+        if description is not None:
+            body["description"] = description
+        if entry_type:
+            body["type"] = entry_type
+        if tags is not None:
+            body["tags"] = [str(tag) for tag in tags]
+        if priority:
+            body["priority"] = priority
+        return self._request("POST", "/context", json_payload=body)
+
+    def get_context_entry(self, context_id: str) -> Any:
+        return self._request("GET", f"/context/{self._encode(context_id)}")
+
+    def update_context_entry(
+        self,
+        context_id: str,
+        *,
+        title: Optional[str] = None,
+        content: Optional[str] = None,
+        description: Optional[str] = None,
+        entry_type: Optional[str] = None,
+        tags: Optional[Iterable[str]] = None,
+        priority: Optional[str] = None,
+        is_active: Optional[bool] = None,
+    ) -> Any:
+        payload: Dict[str, Any] = {}
+        if title is not None:
+            payload["title"] = title
+        if content is not None:
+            payload["content"] = content
+        if description is not None:
+            payload["description"] = description
+        if entry_type is not None:
+            payload["type"] = entry_type
+        if tags is not None:
+            payload["tags"] = [str(tag) for tag in tags]
+        if priority is not None:
+            payload["priority"] = priority
+        if is_active is not None:
+            payload["isActive"] = bool(is_active)
+        if not payload:
+            raise ValueError("at least one field must be provided for update")
+        return self._request("PUT", f"/context/{self._encode(context_id)}", json_payload=payload)
+
+    def delete_context_entry(self, context_id: str) -> Any:
+        return self._request("DELETE", f"/context/{self._encode(context_id)}")
+
+    def list_mcp_servers(self) -> Any:
+        return self._request("GET", "/mcp/servers")
+
+    def create_mcp_server(
+        self,
+        *,
+        name: str,
+        base_url: str,
+        api_key: Optional[str] = None,
+        enabled: Optional[bool] = None,
+    ) -> Any:
+        payload: Dict[str, Any] = {
+            "name": (name or "").strip(),
+            "base_url": (base_url or "").strip(),
+        }
+        if not payload["name"]:
+            raise ValueError("name is required")
+        if not payload["base_url"]:
+            raise ValueError("base_url is required")
+        if api_key is not None:
+            payload["api_key"] = api_key
+        if enabled is not None:
+            payload["enabled"] = bool(enabled)
+        return self._request("POST", "/mcp/servers", json_payload=payload)
+
+    def update_mcp_server(
+        self,
+        server_id: str,
+        *,
+        name: Optional[str] = None,
+        base_url: Optional[str] = None,
+        api_key: Optional[str] = None,
+        enabled: Optional[bool] = None,
+    ) -> Any:
+        payload: Dict[str, Any] = {}
+        if name is not None:
+            payload["name"] = name
+        if base_url is not None:
+            payload["base_url"] = base_url
+        if api_key is not None:
+            payload["api_key"] = api_key
+        if enabled is not None:
+            payload["enabled"] = bool(enabled)
+        if not payload:
+            raise ValueError("at least one field must be provided for update")
+        return self._request("PUT", f"/mcp/servers/{self._encode(server_id)}", json_payload=payload)
+
+    def delete_mcp_server(self, server_id: str) -> Any:
+        return self._request("DELETE", f"/mcp/servers/{self._encode(server_id)}")
+
+    def get_mcp_server_health(self, server_id: str) -> Any:
+        return self._request("GET", f"/mcp/servers/{self._encode(server_id)}/health")
+
+    # Team delegation & task orchestration --------------------------------------
+
+    def list_delegation_tasks(
+        self,
+        *,
+        team_id: Optional[str] = None,
+        status: Optional[Union[str, Sequence[str]]] = None,
+        assignee_id: Optional[str] = None,
+        limit: Optional[int] = None,
+    ) -> Any:
+        params: Dict[str, str] = {}
+        if team_id:
+            params["team_id"] = team_id
+        if status:
+            if isinstance(status, str):
+                params["status"] = status
+            else:
+                params["status"] = ",".join(str(value) for value in status)
+        if assignee_id:
+            params["assignee_id"] = assignee_id
+        if limit is not None:
+            params["limit"] = str(int(limit))
+        return self._request("GET", "/team-delegation/tasks", params=params or None)
+
+    def create_delegation_task(
+        self,
+        *,
+        team_id: str,
+        title: str,
+        description: Optional[str] = None,
+        priority: Optional[str] = None,
+        status: Optional[str] = None,
+        complexity: Optional[str] = None,
+        due_at: Optional[str] = None,
+        created_by: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
+        tags: Optional[Iterable[str]] = None,
+        skill_requirements: Optional[Iterable[str]] = None,
+        estimated_hours: Optional[float] = None,
+        actual_hours: Optional[float] = None,
+        execution_id: Optional[str] = None,
+        assignee_ids: Optional[Iterable[str]] = None,
+        auto_assign: Optional[Dict[str, Any]] = None,
+        delegated_by: Optional[str] = None,
+        workload: Optional[float] = None,
+        notes: Optional[str] = None,
+    ) -> Any:
+        team_value = (team_id or "").strip()
+        if not team_value:
+            raise ValueError("team_id is required")
+        title_value = (title or "").strip()
+        if not title_value:
+            raise ValueError("title is required")
+        payload: Dict[str, Any] = {
+            "team_id": team_value,
+            "title": title_value,
+        }
+        if description is not None:
+            payload["description"] = description
+        if priority is not None:
+            payload["priority"] = priority
+        if status is not None:
+            payload["status"] = status
+        if complexity is not None:
+            payload["complexity"] = complexity
+        if due_at is not None:
+            payload["due_at"] = due_at
+        if created_by is not None:
+            payload["created_by"] = created_by
+        if context is not None:
+            payload["context"] = context
+        if tags is not None:
+            payload["tags"] = [str(tag) for tag in tags]
+        if skill_requirements is not None:
+            payload["skill_requirements"] = [str(skill) for skill in skill_requirements]
+        if estimated_hours is not None:
+            payload["estimated_hours"] = float(estimated_hours)
+        if actual_hours is not None:
+            payload["actual_hours"] = float(actual_hours)
+        if execution_id is not None:
+            payload["execution_id"] = execution_id
+        if assignee_ids is not None:
+            payload["assignee_ids"] = [str(assignee) for assignee in assignee_ids]
+        if auto_assign is not None:
+            payload["auto_assign"] = dict(auto_assign)
+        if delegated_by is not None:
+            payload["delegated_by"] = delegated_by
+        if workload is not None:
+            payload["workload"] = float(workload)
+        if notes is not None:
+            payload["notes"] = notes
+        return self._request("POST", "/team-delegation/tasks", json_payload=payload)
+
+    def get_delegation_task(self, task_id: str) -> Any:
+        return self._request("GET", f"/team-delegation/tasks/{self._encode(task_id)}")
+
+    def update_delegation_task_status(
+        self,
+        task_id: str,
+        *,
+        status: str,
+        payload: Optional[Dict[str, Any]] = None,
+        reason: Optional[str] = None,
+    ) -> Any:
+        status_value = (status or "").strip().lower()
+        if not status_value:
+            raise ValueError("status is required")
+        body: Dict[str, Any] = {"status": status_value}
+        if payload is not None:
+            body["payload"] = payload
+        if reason is not None:
+            body["reason"] = reason
+        return self._request(
+            "POST",
+            f"/team-delegation/tasks/{self._encode(task_id)}/status",
+            json_payload=body,
+        )
+
+    def update_delegation_assignment_status(
+        self,
+        assignment_id: str,
+        *,
+        status: str,
+        payload: Optional[Dict[str, Any]] = None,
+        reason: Optional[str] = None,
+    ) -> Any:
+        status_value = (status or "").strip().lower()
+        if not status_value:
+            raise ValueError("status is required")
+        body: Dict[str, Any] = {"status": status_value}
+        if payload is not None:
+            body["payload"] = payload
+        if reason is not None:
+            body["reason"] = reason
+        return self._request(
+            "POST",
+            f"/team-delegation/assignments/{self._encode(assignment_id)}/status",
+            json_payload=body,
+        )
+
+    def add_delegation_task_update(
+        self,
+        task_id: str,
+        *,
+        event_type: str,
+        payload: Optional[Dict[str, Any]] = None,
+        member_id: Optional[str] = None,
+    ) -> Any:
+        event_value = (event_type or "").strip()
+        if not event_value:
+            raise ValueError("event_type is required")
+        body: Dict[str, Any] = {
+            "event_type": event_value,
+        }
+        if payload is not None:
+            body["payload"] = payload
+        if member_id is not None:
+            body["member_id"] = member_id
+        return self._request(
+            "POST",
+            f"/team-delegation/tasks/{self._encode(task_id)}/updates",
+            json_payload=body,
+        )
+
+    def bulk_update_delegation_task_status(
+        self,
+        *,
+        task_ids: Sequence[str],
+        status: str,
+        reason: Optional[str] = None,
+        member_id: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Any:
+        ids = [str(value) for value in task_ids if str(value)]
+        if not ids:
+            raise ValueError("task_ids is required")
+        status_value = (status or "").strip().lower()
+        if not status_value:
+            raise ValueError("status is required")
+        body: Dict[str, Any] = {
+            "task_ids": ids,
+            "status": status_value,
+        }
+        if reason is not None:
+            body["reason"] = reason
+        if member_id is not None:
+            body["member_id"] = member_id
+        if metadata is not None:
+            body["metadata"] = metadata
+        return self._request(
+            "POST",
+            "/team-delegation/tasks/bulk/status",
+            json_payload=body,
+        )
+
+    def bulk_assign_delegation_tasks(
+        self,
+        *,
+        task_ids: Sequence[str],
+        assignee_ids: Sequence[str],
+        status: Optional[str] = None,
+        replace_existing: Optional[bool] = None,
+        delegated_by: Optional[str] = None,
+        workload: Optional[float] = None,
+        notes: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Any:
+        task_values = [str(value) for value in task_ids if str(value)]
+        if not task_values:
+            raise ValueError("task_ids is required")
+        assignee_values = [str(value) for value in assignee_ids if str(value)]
+        if not assignee_values:
+            raise ValueError("assignee_ids is required")
+        body: Dict[str, Any] = {
+            "task_ids": task_values,
+            "assignee_ids": assignee_values,
+        }
+        if status is not None:
+            body["status"] = status
+        if replace_existing is not None:
+            body["replace_existing"] = bool(replace_existing)
+        if delegated_by is not None:
+            body["delegated_by"] = delegated_by
+        if workload is not None:
+            body["workload"] = float(workload)
+        if notes is not None:
+            body["notes"] = notes
+        if metadata is not None:
+            body["metadata"] = metadata
+        return self._request(
+            "POST",
+            "/team-delegation/tasks/bulk/assign",
+            json_payload=body,
+        )
+
+    def export_delegation_tasks(
+        self,
+        *,
+        team_id: Optional[str] = None,
+        status: Optional[str] = None,
+        limit: Optional[int] = None,
+        include_updates: Optional[bool] = None,
+        format: str = "json",
+    ) -> Any:
+        params: Dict[str, str] = {"format": format}
+        if team_id:
+            params["team_id"] = team_id
+        if status:
+            params["status"] = status
+        if limit is not None:
+            params["limit"] = str(int(limit))
+        if include_updates is not None:
+            params["include_updates"] = self._bool_to_str(include_updates)
+        return self._request(
+            "GET",
+            "/team-delegation/tasks/export",
+            params=params,
+        )
+
+    # Integration automation ----------------------------------------------------
+    def clone_repository(
+        self,
+        *,
+        repository_url: str,
+        shallow_clone: bool = True,
+        refresh_analysis: Optional[bool] = None,
+        auth_token: Optional[str] = None,
+    ) -> Any:
+        repo = (repository_url or "").strip()
+        if not repo:
+            raise ValueError("repository_url is required")
+        payload: Dict[str, Any] = {"repository_url": repo}
+        if not shallow_clone:
+            payload["shallow_clone"] = False
+        if refresh_analysis is not None:
+            payload["refresh"] = bool(refresh_analysis)
+        headers = {"authorization": f"Bearer {auth_token}"} if auth_token else None
+        return self._request("POST", "/github/clone", json_payload=payload, headers=headers)
+
+    def prepare_integration(
+        self,
+        *,
+        repository_url: str,
+        branch_name: Optional[str] = None,
+        base_branch: Optional[str] = None,
+        backup_original: Optional[bool] = None,
+        shallow_clone: bool = True,
+        refresh_analysis: Optional[bool] = None,
+        auth_token: Optional[str] = None,
+    ) -> Any:
+        repo = (repository_url or "").strip()
+        if not repo:
+            raise ValueError("repository_url is required")
+        payload: Dict[str, Any] = {"repository_url": repo}
+        if branch_name:
+            payload["branch_name"] = branch_name
+        if base_branch:
+            payload["base_branch"] = base_branch
+        if backup_original is not None:
+            payload["backup_original"] = bool(backup_original)
+        if not shallow_clone:
+            payload["shallow_clone"] = False
+        if refresh_analysis is not None:
+            payload["refresh"] = bool(refresh_analysis)
+        headers = {"authorization": f"Bearer {auth_token}"} if auth_token else None
+        return self._request("POST", "/github/prepare-integration", json_payload=payload, headers=headers)
+
+    def install_integration_dependencies(
+        self,
+        *,
+        repository_path: str,
+        dependencies: Optional[Iterable[str]] = None,
+        dev_dependencies: Optional[Iterable[str]] = None,
+        python_dependencies: Optional[Iterable[str]] = None,
+    ) -> Any:
+        path = (repository_path or "").strip()
+        if not path:
+            raise ValueError("repository_path is required")
+        payload: Dict[str, Any] = {"repository_path": path}
+        if dependencies:
+            payload["dependencies"] = [str(dep) for dep in dependencies]
+        if dev_dependencies:
+            payload["dev_dependencies"] = [str(dep) for dep in dev_dependencies]
+        if python_dependencies:
+            payload["python_dependencies"] = [str(dep) for dep in python_dependencies]
+        return self._request("POST", "/integration/install-dependencies", json_payload=payload)
+
+    def write_integration_files(
+        self,
+        *,
+        repository_path: str,
+        files: Dict[str, Any],
+        create_backup: Optional[bool] = None,
+        config: Optional[Dict[str, Any]] = None,
+    ) -> Any:
+        path = (repository_path or "").strip()
+        if not path:
+            raise ValueError("repository_path is required")
+        if not files:
+            raise ValueError("files is required")
+        payload: Dict[str, Any] = {"repository_path": path, "files": files}
+        if create_backup is not None:
+            payload["create_backup"] = bool(create_backup)
+        if config is not None:
+            payload["config"] = config
+        return self._request("POST", "/integration/write-files", json_payload=payload)
+
+    def run_integration_tests(self, *, repository_path: str) -> Any:
+        path = (repository_path or "").strip()
+        if not path:
+            raise ValueError("repository_path is required")
+        payload = {"repository_path": path}
+        return self._request("POST", "/integration/test", json_payload=payload)
+
+    def create_github_pull_request(
+        self,
+        *,
+        repository_url: str,
+        repository_path: Optional[str] = None,
+        branch_name: str,
+        base_branch: Optional[str] = None,
+        title: Optional[str] = None,
+        body: Optional[str] = None,
+        auth_token: Optional[str] = None,
+    ) -> Any:
+        repo = (repository_url or "").strip()
+        if not repo:
+            raise ValueError("repository_url is required")
+        branch = (branch_name or "").strip()
+        if not branch:
+            raise ValueError("branch_name is required")
+        payload: Dict[str, Any] = {
+            "repository_url": repo,
+            "branch_name": branch,
+        }
+        if repository_path:
+            payload["repository_path"] = repository_path
+        if base_branch:
+            payload["base_branch"] = base_branch
+        if title:
+            payload["title"] = title
+        if body:
+            payload["description"] = body
+        headers = {"authorization": f"Bearer {auth_token}"} if auth_token else None
+        return self._request("POST", "/github/create-pr", json_payload=payload, headers=headers)
+
+    # Claude integration support -------------------------------------------------
+    def create_claude_integration_plan(
+        self,
+        *,
+        repository: Optional[Dict[str, Any]] = None,
+        recommendations: Optional[str] = None,
+        workflow: Optional[Dict[str, Any]] = None,
+        confidence_score: Optional[float] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Any:
+        payload: Dict[str, Any] = {}
+        if repository is not None:
+            payload["repository"] = repository
+        if recommendations is not None:
+            payload["recommendations"] = recommendations
+        if workflow is not None:
+            payload["workflow"] = workflow
+        if confidence_score is not None:
+            payload["confidence_score"] = float(confidence_score)
+        if metadata is not None:
+            payload["metadata"] = metadata
+        return self._request("POST", "/claude/integration-plans", json_payload=payload)
+
+    def list_claude_integration_plans(self, *, limit: Optional[int] = None) -> Any:
+        params: Dict[str, str] = {}
+        if limit is not None:
+            params["limit"] = str(int(limit))
+        return self._request("GET", "/claude/integration-plans", params=params or None)
+
+    def list_claude_sessions(
+        self,
+        *,
+        limit: Optional[int] = None,
+        status: Optional[Iterable[str]] = None,
+    ) -> Any:
+        params: Dict[str, str] = {}
+        if limit is not None:
+            params["limit"] = str(int(limit))
+        if status:
+            params["status"] = ",".join(str(value) for value in status if str(value))
+        return self._request("GET", "/claude-agent/sessions", params=params or None)
+
+    def create_claude_session(
+        self,
+        *,
+        repository_name: str,
+        team_id: Optional[str] = None,
+        repository_owner: Optional[str] = None,
+        repository_url: Optional[str] = None,
+        default_branch: Optional[str] = None,
+        tasks: Optional[Iterable[Dict[str, Any]]] = None,
+    ) -> Any:
+        name = (repository_name or "").strip()
+        if not name:
+            raise ValueError("repository_name is required")
+        payload: Dict[str, Any] = {"repository_name": name}
+        if team_id is not None:
+            payload["team_id"] = team_id
+        if repository_owner is not None:
+            payload["repository_owner"] = repository_owner
+        if repository_url is not None:
+            payload["repository_url"] = repository_url
+        if default_branch is not None:
+            payload["default_branch"] = default_branch
+        if tasks is not None:
+            payload["tasks"] = [dict(task) for task in tasks]
+        return self._request("POST", "/claude-agent/sessions", json_payload=payload)
+
+    def get_claude_session(self, session_id: str) -> Any:
+        session = (session_id or "").strip()
+        if not session:
+            raise ValueError("session_id is required")
+        return self._request("GET", f"/claude-agent/sessions/{self._encode(session)}")
+
+    def log_claude_session(
+        self,
+        session_id: str,
+        *,
+        message: str,
+        level: Optional[str] = None,
+        details: Optional[Dict[str, Any]] = None,
+    ) -> Any:
+        session = (session_id or "").strip()
+        if not session:
+            raise ValueError("session_id is required")
+        text = (message or "").strip()
+        if not text:
+            raise ValueError("message is required")
+        payload: Dict[str, Any] = {"message": text}
+        if level is not None:
+            payload["level"] = level
+        if details is not None:
+            payload["details"] = details
+        return self._request(
+            "POST",
+            f"/claude-agent/sessions/{self._encode(session)}/logs",
+            json_payload=payload,
+        )
+
+    def update_claude_task(
+        self,
+        session_id: str,
+        task_id: str,
+        *,
+        status: Optional[str] = None,
+        progress: Optional[float] = None,
+        started_at: Optional[str] = None,
+        completed_at: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Any:
+        session = (session_id or "").strip()
+        task = (task_id or "").strip()
+        if not session or not task:
+            raise ValueError("session_id and task_id are required")
+        payload: Dict[str, Any] = {}
+        if status is not None:
+            payload["status"] = status
+        if progress is not None:
+            payload["progress"] = float(progress)
+        if started_at is not None:
+            payload["started_at"] = started_at
+        if completed_at is not None:
+            payload["completed_at"] = completed_at
+        if metadata is not None:
+            payload["metadata"] = metadata
+        if not payload:
+            raise ValueError("at least one field must be provided for update")
+        return self._request(
+            "PATCH",
+            f"/claude-agent/sessions/{self._encode(session)}/tasks/{self._encode(task)}",
+            json_payload=payload,
+        )
+
+    def rerun_claude_session(self, session_id: str) -> Any:
+        session = (session_id or "").strip()
+        if not session:
+            raise ValueError("session_id is required")
+        return self._request(
+            "POST",
+            f"/claude-agent/sessions/{self._encode(session)}/rerun",
+            json_payload={},
+        )
 
     # GraphRAG operations -------------------------------------------------------
     def search_graphrag(
