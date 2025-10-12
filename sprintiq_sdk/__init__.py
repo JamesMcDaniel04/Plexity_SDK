@@ -3,6 +3,7 @@
 from .agentic import ContextClient, MCPClient, TeamDelegationClient
 from .automation import ClaudeAutomationClient, IntegrationAutomationClient, IntegrationPlan
 from .client import SprintIQClient, SprintIQError
+from .insights import InsightClient
 from .webhooks import (
     compute_webhook_signature,
     extract_webhook_request,
@@ -19,6 +20,7 @@ __all__ = [
     "IntegrationPlan",
     "IntegrationAutomationClient",
     "ClaudeAutomationClient",
+    "InsightClient",
     "compute_webhook_signature",
     "verify_webhook_signature",
     "extract_webhook_request",

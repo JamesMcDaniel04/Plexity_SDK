@@ -197,6 +197,80 @@ class SprintIQClient:
         res = self._request("POST", "/graphrag/ingest/topology", json_payload=payload)
         return int(res.get("accepted", len(payload["events"]))) if isinstance(res, dict) else len(payload["events"])
 
+    # Insight jobs -----------------------------------------------------------------
+    def list_insight_jobs(
+        self,
+        *,
+        status: Optional[Iterable[str]] = None,
+        job_type: Optional[str] = None,
+        team_id: Optional[str] = None,
+        limit: Optional[int] = None,
+    ) -> Any:
+        params: Dict[str, str] = {}
+        if status:
+            values = [str(item).strip() for item in status if str(item).strip()]
+            if values:
+                params["status"] = ",".join(values)
+        if job_type:
+            params["job_type"] = job_type
+        if team_id:
+            params["team_id"] = team_id
+        if limit is not None:
+            params["limit"] = str(int(limit))
+        resp = self._request("GET", "/insights/jobs", params=params or None)
+        return resp.get("jobs", []) if isinstance(resp, dict) else resp
+
+    def get_latest_insight_job(self, *, job_type: Optional[str] = None) -> Any:
+        params: Dict[str, str] = {}
+        if job_type:
+            params["job_type"] = job_type
+        resp = self._request("GET", "/insights/jobs/latest", params=params or None)
+        return resp.get("job") if isinstance(resp, dict) else resp
+
+    def create_insight_job(
+        self,
+        *,
+        job_type: str,
+        payload: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        team_id: Optional[str] = None,
+        priority: Optional[int] = None,
+        delay_ms: Optional[int] = None,
+    ) -> Any:
+        job_value = (job_type or "").strip()
+        if not job_value:
+            raise ValueError("job_type is required")
+        body: Dict[str, Any] = {
+            "job_type": job_value,
+            "payload": dict(payload or {}),
+        }
+        if metadata is not None:
+            body["metadata"] = dict(metadata)
+        if team_id is not None:
+            body["team_id"] = team_id
+        if priority is not None:
+            body["priority"] = int(priority)
+        if delay_ms is not None:
+            body["delay_ms"] = int(delay_ms)
+        resp = self._request("POST", "/insights/jobs", json_payload=body)
+        return resp.get("job") if isinstance(resp, dict) else resp
+
+    def get_insight_job(self, job_id: str) -> Any:
+        identifier = (job_id or "").strip()
+        if not identifier:
+            raise ValueError("job_id is required")
+        resp = self._request("GET", f"/insights/jobs/{self._encode(identifier)}")
+        return resp.get("job") if isinstance(resp, dict) else resp
+
+    def get_insight_job_result(self, job_id: str) -> Any:
+        identifier = (job_id or "").strip()
+        if not identifier:
+            raise ValueError("job_id is required")
+        resp = self._request("GET", f"/insights/jobs/{self._encode(identifier)}/result")
+        if isinstance(resp, dict):
+            return resp.get("result")
+        return resp
+
     # Context memory & MCP ------------------------------------------------------
 
     def list_context_entries(

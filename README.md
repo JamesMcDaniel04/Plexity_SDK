@@ -22,7 +22,7 @@ workflows = client.list_workflows()
 print(workflows)
 ```
 
-See the full documentation in `docs/integration-guides/python.md`.
+See the full documentation in [docs/sdk-python.md](../../docs/sdk-python.md).
 
 ## GraphRAG Search
 

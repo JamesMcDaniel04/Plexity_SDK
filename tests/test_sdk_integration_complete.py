@@ -11,7 +11,6 @@ This test validates that the SDK now exposes the five previously missing layers:
 
 import unittest
 from typing import Any, Dict, Optional
-from unittest.mock import MagicMock, patch
 
 from sprintiq_sdk import (
     SprintIQClient,
@@ -21,6 +20,7 @@ from sprintiq_sdk import (
     IntegrationAutomationClient,
     ClaudeAutomationClient,
     IntegrationPlan,
+    InsightClient,
 )
 
 
@@ -233,24 +233,90 @@ class Layer2TaskDelegationTests(unittest.TestCase):
 
 
 class Layer3InsightGenerationTests(unittest.TestCase):
-    """Test Layer 3: Insight generation pipeline - currently exposed via base client."""
+    """Test Layer 3: Insight generation pipeline helpers."""
 
-    def test_insight_endpoints_exist_in_base_client(self):
-        """Verify insight-related methods exist on SprintIQClient."""
-        client, _ = make_client()
+    def test_list_insight_jobs_serialises_filters(self):
+        client, session = make_client({"jobs": [{"id": "job-1"}]})
 
-        # The base client doesn't have explicit insight methods yet
-        # but they should be accessible via generic _request method
-        # This test documents the expected API surface
+        jobs = client.list_insight_jobs(
+            status=["completed", "processing"],
+            job_type="weekly_report",
+            team_id="team-42",
+            limit=25,
+        )
 
-        # Expected methods (to be implemented):
-        # - client.list_insight_jobs(...)
-        # - client.create_insight_job(...)
-        # - client.get_insight_job(job_id)
-        # - client.get_insight_job_result(job_id)
+        self.assertEqual(jobs, [{"id": "job-1"}])
+        request = session.requests[0]
+        self.assertEqual(request["method"], "GET")
+        self.assertEqual(request["url"], "https://api.test.local/insights/jobs")
+        params = request["params"]
+        assert params is not None
+        self.assertEqual(params["status"], "completed,processing")
+        self.assertEqual(params["job_type"], "weekly_report")
+        self.assertEqual(params["team_id"], "team-42")
+        self.assertEqual(params["limit"], "25")
 
-        # For now, verify the client has the _request method
-        self.assertTrue(hasattr(client, '_request'))
+    def test_create_insight_job_payload(self):
+        client, session = make_client({"job": {"id": "job-2"}})
+
+        job = client.create_insight_job(
+            job_type="weekly_report",
+            payload={"week": "2024-10-07"},
+            metadata={"initiator": "ops"},
+            team_id="team-7",
+            priority=3,
+            delay_ms=60000,
+        )
+
+        self.assertEqual(job["id"], "job-2")
+        request = session.requests[0]
+        self.assertEqual(request["method"], "POST")
+        self.assertEqual(request["url"], "https://api.test.local/insights/jobs")
+        payload = request["json"]
+        self.assertEqual(payload["job_type"], "weekly_report")
+        self.assertEqual(payload["payload"], {"week": "2024-10-07"})
+        self.assertEqual(payload["metadata"], {"initiator": "ops"})
+        self.assertEqual(payload["team_id"], "team-7")
+        self.assertEqual(payload["priority"], 3)
+        self.assertEqual(payload["delay_ms"], 60000)
+
+    def test_get_insight_job_and_result(self):
+        client, session = make_client({"job": {"id": "job-3"}, "result": {"summary": "ok"}})
+
+        job = client.get_insight_job("job-3")
+        self.assertEqual(job["id"], "job-3")
+        request = session.requests[0]
+        self.assertEqual(request["method"], "GET")
+        self.assertEqual(request["url"], "https://api.test.local/insights/jobs/job-3")
+
+        result = client.get_insight_job_result("job-3")
+        self.assertEqual(result, {"summary": "ok"})
+        request = session.requests[1]
+        self.assertEqual(request["method"], "GET")
+        self.assertEqual(request["url"], "https://api.test.local/insights/jobs/job-3/result")
+
+    def test_get_latest_insight_job(self):
+        client, session = make_client({"job": {"id": "job-latest"}})
+
+        job = client.get_latest_insight_job(job_type="weekly_report")
+
+        self.assertEqual(job["id"], "job-latest")
+        request = session.requests[0]
+        self.assertEqual(request["method"], "GET")
+        self.assertEqual(request["url"], "https://api.test.local/insights/jobs/latest")
+        params = request["params"]
+        assert params is not None
+        self.assertEqual(params["job_type"], "weekly_report")
+
+    def test_insight_client_wrapper_delegates_to_base_client(self):
+        client, session = make_client({"jobs": []})
+        insight = InsightClient(client)
+
+        insight.list_jobs(status=["queued"])
+
+        request = session.requests[0]
+        self.assertEqual(request["method"], "GET")
+        self.assertEqual(request["url"], "https://api.test.local/insights/jobs")
 
 
 class Layer4IntegrationOrchestrationTests(unittest.TestCase):
@@ -482,6 +548,7 @@ class ComprehensiveIntegrationTest(unittest.TestCase):
             TeamDelegationClient,
             IntegrationAutomationClient,
             ClaudeAutomationClient,
+            InsightClient,
         )
 
         # All should be importable
@@ -490,6 +557,7 @@ class ComprehensiveIntegrationTest(unittest.TestCase):
         self.assertIsNotNone(TeamDelegationClient)
         self.assertIsNotNone(IntegrationAutomationClient)
         self.assertIsNotNone(ClaudeAutomationClient)
+        self.assertIsNotNone(InsightClient)
 
     def test_client_composition_pattern(self):
         """Verify clients can be composed with base SprintIQClient."""
@@ -501,6 +569,7 @@ class ComprehensiveIntegrationTest(unittest.TestCase):
         delegation = TeamDelegationClient(base, team_id="team-1")
         automation = IntegrationAutomationClient(base)
         claude = ClaudeAutomationClient(base)
+        insight = InsightClient(base)
 
         # All should be initialized
         self.assertIsNotNone(context)
@@ -508,6 +577,7 @@ class ComprehensiveIntegrationTest(unittest.TestCase):
         self.assertIsNotNone(delegation)
         self.assertIsNotNone(automation)
         self.assertIsNotNone(claude)
+        self.assertIsNotNone(insight)
 
     def test_graphrag_integration_still_present(self):
         """Verify existing GraphRAG functionality is preserved."""
