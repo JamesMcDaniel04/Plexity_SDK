@@ -8,6 +8,15 @@ Official Python bindings for the Plexity Agentic RAG Orchestrator API.
 pip install plexity-sdk
 ```
 
+## Development & Testing
+
+Install the SDK with development extras and run the verification suite:
+
+```bash
+pip install -e .[dev]
+pytest
+```
+
 ## Quickstart
 
 ```python

@@ -9,6 +9,11 @@ dependencies = [
   "requests>=2.32.0"
 ]
 
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3.0"
+]
+
 [project.urls]
 Homepage = "https://github.com/plexity/agentic-rag-orchestrator"
 Documentation = "https://github.com/plexity/agentic-rag-orchestrator/tree/main/docs"
