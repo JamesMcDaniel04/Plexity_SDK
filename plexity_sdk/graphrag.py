@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Sequence
 
-from .client import SprintIQClient
+from .client import PlexityClient
 
 __all__ = [
     "GraphRAGClient",
@@ -26,9 +26,9 @@ class GraphRAGTelemetryContext:
 
 
 class GraphRAGTelemetry:
-    """Thin helper over :class:`SprintIQClient` for GraphRAG telemetry ingest."""
+    """Thin helper over :class:`PlexityClient` for GraphRAG telemetry ingest."""
 
-    def __init__(self, client: SprintIQClient, context: GraphRAGTelemetryContext) -> None:
+    def __init__(self, client: PlexityClient, context: GraphRAGTelemetryContext) -> None:
         self._client = client
         self._context = context
 
@@ -83,11 +83,11 @@ class GraphRAGTelemetry:
 
 
 class GraphRAGClient:
-    """Convenience wrapper around :class:`SprintIQClient` for GraphRAG operations."""
+    """Convenience wrapper around :class:`PlexityClient` for GraphRAG operations."""
 
     def __init__(
         self,
-        client: SprintIQClient,
+        client: PlexityClient,
         *,
         org_id: Optional[str] = None,
         environment: str = "prod",

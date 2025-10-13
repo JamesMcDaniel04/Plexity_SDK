@@ -2,11 +2,11 @@ import json
 import unittest
 from typing import Any, Dict, Optional
 
-from sprintiq_sdk import (
+from plexity_sdk import (
     ClaudeAutomationClient,
     IntegrationAutomationClient,
     IntegrationPlan,
-    SprintIQClient,
+    PlexityClient,
 )
 
 
@@ -49,13 +49,13 @@ class RecordingSession:
         return DummyResponse(self._payload)
 
 
-def make_client(payload: Optional[Dict[str, Any]] = None) -> tuple[SprintIQClient, RecordingSession]:
+def make_client(payload: Optional[Dict[str, Any]] = None) -> tuple[PlexityClient, RecordingSession]:
     session = RecordingSession(payload=payload)
-    client = SprintIQClient(base_url="https://example.test", session=session)
+    client = PlexityClient(base_url="https://example.test", session=session)
     return client, session
 
 
-class SprintIQIntegrationApiTests(unittest.TestCase):
+class PlexityIntegrationApiTests(unittest.TestCase):
     def test_clone_repository_sends_auth_header(self) -> None:
         client, session = make_client({"ok": True})
         client.clone_repository(repository_url="https://github.com/org/repo", auth_token="token-123", shallow_clone=False)

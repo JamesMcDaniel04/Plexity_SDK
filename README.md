@@ -1,20 +1,20 @@
-# SprintIQ Python SDK
+# Plexity Python SDK
 
-Official Python bindings for the SprintIQ Agentic RAG Orchestrator API.
+Official Python bindings for the Plexity Agentic RAG Orchestrator API.
 
 ## Installation
 
 ```bash
-pip install sprintiq-sdk
+pip install plexity-sdk
 ```
 
 ## Quickstart
 
 ```python
-from sprintiq_sdk import SprintIQClient
+from plexity_sdk import PlexityClient
 
-client = SprintIQClient(
-    base_url="https://api.sprintiq.ai",
+client = PlexityClient(
+    base_url="https://api.plexity.ai",
     api_key="sqk_xxx.yyy"
 )
 
@@ -27,9 +27,9 @@ See the full documentation in [docs/sdk-python.md](../../docs/sdk-python.md).
 ## GraphRAG Search
 
 ```python
-from sprintiq_sdk import GraphRAGClient, SprintIQClient
+from plexity_sdk import GraphRAGClient, PlexityClient
 
-client = SprintIQClient(base_url="https://api.sprintiq.ai", api_key="sqk_xxx.yyy")
+client = PlexityClient(base_url="https://api.plexity.ai", api_key="sqk_xxx.yyy")
 rag = GraphRAGClient(client, org_id="org_default", environment="prod")
 
 result = rag.search(

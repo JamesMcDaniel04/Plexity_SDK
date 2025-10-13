@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Iterable, Optional
 
-from .client import SprintIQClient
+from .client import PlexityClient
 
 __all__ = ["InsightClient"]
 
@@ -10,7 +10,7 @@ __all__ = ["InsightClient"]
 class InsightClient:
     """Convenience wrapper for orchestrator insight jobs."""
 
-    def __init__(self, client: SprintIQClient) -> None:
+    def __init__(self, client: PlexityClient) -> None:
         self._client = client
 
     def list_jobs(

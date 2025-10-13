@@ -2,7 +2,7 @@ import json
 import unittest
 from typing import Any, Dict, Iterable, Optional
 
-from sprintiq_sdk import GraphRAGClient, SprintIQClient
+from plexity_sdk import GraphRAGClient, PlexityClient
 
 
 class DummyResponse:
@@ -36,13 +36,13 @@ class RecordingSession:
         return DummyResponse(self._payload)
 
 
-def make_client(payload: Optional[Dict[str, Any]] = None) -> tuple[SprintIQClient, RecordingSession]:
+def make_client(payload: Optional[Dict[str, Any]] = None) -> tuple[PlexityClient, RecordingSession]:
     session = RecordingSession(payload=payload)
-    client = SprintIQClient(base_url="https://example.test", session=session)
+    client = PlexityClient(base_url="https://example.test", session=session)
     return client, session
 
 
-class SprintIQGraphRAGClientTests(unittest.TestCase):
+class PlexityGraphRAGClientTests(unittest.TestCase):
     def test_search_graphrag_applies_microsoft_delegation(self) -> None:
         client, session = make_client({"answer": "done"})
         result = client.search_graphrag(

@@ -1,17 +1,17 @@
 [project]
-name = "sprintiq-sdk"
+name = "plexity-sdk"
 version = "0.2.0"
-description = "Python SDK for SprintIQ Agentic RAG Orchestrator"
+description = "Python SDK for Plexity Agentic RAG Orchestrator"
 requires-python = ">=3.9"
 readme = "README.md"
-authors = [{ name = "SprintIQ", email = "support@plexity.ai" }]
+authors = [{ name = "Plexity", email = "support@plexity.ai" }]
 dependencies = [
   "requests>=2.32.0"
 ]
 
 [project.urls]
-Homepage = "https://github.com/sprintiq/agentic-rag-orchestrator"
-Documentation = "https://github.com/sprintiq/agentic-rag-orchestrator/tree/main/docs"
+Homepage = "https://github.com/plexity/agentic-rag-orchestrator"
+Documentation = "https://github.com/plexity/agentic-rag-orchestrator/tree/main/docs"
 
 [build-system]
 requires = ["setuptools>=61.0"]

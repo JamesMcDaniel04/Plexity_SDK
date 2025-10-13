@@ -6,7 +6,7 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Union
 import requests
 
 
-class SprintIQError(Exception):
+class PlexityError(Exception):
     """Raised when the API returns an error response."""
 
     def __init__(self, status_code: int, message: str, payload: Any | None = None) -> None:
@@ -15,8 +15,8 @@ class SprintIQError(Exception):
         self.payload = payload
 
 
-class SprintIQClient:
-    """Lightweight HTTP client for the SprintIQ orchestrator API."""
+class PlexityClient:
+    """Lightweight HTTP client for the Plexity orchestrator API."""
 
     def __init__(
         self,
@@ -1233,7 +1233,7 @@ class SprintIQClient:
             except ValueError:
                 payload = response.text
             message = self._error_message(response.status_code, payload)
-            raise SprintIQError(response.status_code, message, payload)
+            raise PlexityError(response.status_code, message, payload)
 
         if response.status_code == 204:
             return None

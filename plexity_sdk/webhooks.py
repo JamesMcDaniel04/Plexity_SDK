@@ -28,7 +28,7 @@ def verify_webhook_signature(
     signature: str,
     tolerance_seconds: int = DEFAULT_TOLERANCE_SECONDS,
 ) -> bool:
-    """Validate a webhook signature emitted by the SprintIQ orchestrator."""
+    """Validate a webhook signature emitted by the Plexity orchestrator."""
     if not secret or not signature or not timestamp:
         return False
     try:
@@ -52,8 +52,8 @@ def verify_webhook_signature(
 
 def extract_webhook_request(headers: Dict[str, Any], body: Any, raw_body: Union[str, bytes, None] = None) -> Dict[str, Any]:
     """Utility to pull signature metadata from a webhook request."""
-    signature = headers.get("x-sprintiq-signature")
-    timestamp = headers.get("x-sprintiq-timestamp")
+    signature = headers.get("x-plexity-signature")
+    timestamp = headers.get("x-plexity-timestamp")
     payload = raw_body if raw_body is not None else body
     return {
         "signature": signature,

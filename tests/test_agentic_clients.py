@@ -2,10 +2,10 @@ import json
 import unittest
 from typing import Any, Dict, Optional
 
-from sprintiq_sdk import (
+from plexity_sdk import (
     ContextClient,
     MCPClient,
-    SprintIQClient,
+    PlexityClient,
     TeamDelegationClient,
 )
 
@@ -49,9 +49,9 @@ class RecordingSession:
         return DummyResponse(self._payload)
 
 
-def make_client(payload: Optional[Dict[str, Any]] = None) -> tuple[SprintIQClient, RecordingSession]:
+def make_client(payload: Optional[Dict[str, Any]] = None) -> tuple[PlexityClient, RecordingSession]:
     session = RecordingSession(payload=payload)
-    client = SprintIQClient(base_url="https://example.test", session=session)
+    client = PlexityClient(base_url="https://example.test", session=session)
     return client, session
 
 

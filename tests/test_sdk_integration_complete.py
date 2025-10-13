@@ -12,8 +12,8 @@ This test validates that the SDK now exposes the five previously missing layers:
 import unittest
 from typing import Any, Dict, Optional
 
-from sprintiq_sdk import (
-    SprintIQClient,
+from plexity_sdk import (
+    PlexityClient,
     ContextClient,
     MCPClient,
     TeamDelegationClient,
@@ -67,10 +67,10 @@ class RecordingSession:
         return DummyResponse(self._payload)
 
 
-def make_client(payload: Optional[Dict[str, Any]] = None) -> tuple[SprintIQClient, RecordingSession]:
+def make_client(payload: Optional[Dict[str, Any]] = None) -> tuple[PlexityClient, RecordingSession]:
     """Create a test client with recording session."""
     session = RecordingSession(payload=payload)
-    client = SprintIQClient(base_url="https://api.test.local", session=session)
+    client = PlexityClient(base_url="https://api.test.local", session=session)
     return client, session
 
 
@@ -542,7 +542,7 @@ class ComprehensiveIntegrationTest(unittest.TestCase):
 
     def test_all_clients_accessible_from_main_import(self):
         """Verify all client classes are exported from main package."""
-        from sprintiq_sdk import (
+        from plexity_sdk import (
             ContextClient,
             MCPClient,
             TeamDelegationClient,
@@ -560,7 +560,7 @@ class ComprehensiveIntegrationTest(unittest.TestCase):
         self.assertIsNotNone(InsightClient)
 
     def test_client_composition_pattern(self):
-        """Verify clients can be composed with base SprintIQClient."""
+        """Verify clients can be composed with base PlexityClient."""
         base, _ = make_client()
 
         # All specialized clients should accept base client
@@ -581,7 +581,7 @@ class ComprehensiveIntegrationTest(unittest.TestCase):
 
     def test_graphrag_integration_still_present(self):
         """Verify existing GraphRAG functionality is preserved."""
-        from sprintiq_sdk import GraphRAGClient
+        from plexity_sdk import GraphRAGClient
 
         client, session = make_client({"results": []})
         graphrag = GraphRAGClient(client)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Iterable, Optional, Sequence, Union
 
-from .client import SprintIQClient
+from .client import PlexityClient
 
 __all__ = ["ContextClient", "MCPClient", "TeamDelegationClient"]
 
@@ -10,7 +10,7 @@ __all__ = ["ContextClient", "MCPClient", "TeamDelegationClient"]
 class ContextClient:
     """Helper utilities for working with organizational context entries."""
 
-    def __init__(self, client: SprintIQClient) -> None:
+    def __init__(self, client: PlexityClient) -> None:
         self._client = client
 
     def list(
@@ -84,7 +84,7 @@ class ContextClient:
 class MCPClient:
     """Client helper for MCP server administration."""
 
-    def __init__(self, client: SprintIQClient) -> None:
+    def __init__(self, client: PlexityClient) -> None:
         self._client = client
 
     def list_servers(self) -> Any:
@@ -132,7 +132,7 @@ class MCPClient:
 class TeamDelegationClient:
     """Agentic task routing helper over the team delegation API surface."""
 
-    def __init__(self, client: SprintIQClient, *, team_id: Optional[str] = None) -> None:
+    def __init__(self, client: PlexityClient, *, team_id: Optional[str] = None) -> None:
         self._client = client
         self._team_id = team_id
 

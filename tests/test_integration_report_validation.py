@@ -21,49 +21,49 @@ class ReportValidationTests(unittest.TestCase):
 
     def test_layer1_sdk_classes_exist(self):
         """Verify Layer 1: ContextClient and MCPClient are exported."""
-        from sprintiq_sdk import ContextClient, MCPClient
+        from plexity_sdk import ContextClient, MCPClient
 
         self.assertIsNotNone(ContextClient)
         self.assertIsNotNone(MCPClient)
 
     def test_layer2_sdk_classes_exist(self):
         """Verify Layer 2: TeamDelegationClient is exported."""
-        from sprintiq_sdk import TeamDelegationClient
+        from plexity_sdk import TeamDelegationClient
 
         self.assertIsNotNone(TeamDelegationClient)
 
     def test_layer3_sdk_classes_exist(self):
         """Verify Layer 3: InsightClient is exported."""
-        from sprintiq_sdk import InsightClient
+        from plexity_sdk import InsightClient
 
         self.assertIsNotNone(InsightClient)
 
     def test_layer4_sdk_classes_exist(self):
         """Verify Layer 4: IntegrationAutomationClient and IntegrationPlan are exported."""
-        from sprintiq_sdk import IntegrationAutomationClient
-        from sprintiq_sdk.automation import IntegrationPlan
+        from plexity_sdk import IntegrationAutomationClient
+        from plexity_sdk.automation import IntegrationPlan
 
         self.assertIsNotNone(IntegrationAutomationClient)
         self.assertIsNotNone(IntegrationPlan)
 
     def test_layer5_sdk_classes_exist(self):
         """Verify Layer 5: ClaudeAutomationClient is exported."""
-        from sprintiq_sdk import ClaudeAutomationClient
+        from plexity_sdk import ClaudeAutomationClient
 
         self.assertIsNotNone(ClaudeAutomationClient)
 
     def test_all_reported_imports_work(self):
         """Verify the exact import statement from the report works."""
         # This is the exact import from the report PLUS newly discovered InsightClient
-        from sprintiq_sdk import (
+        from plexity_sdk import (
             ContextClient,
             MCPClient,
             TeamDelegationClient,
             IntegrationAutomationClient,
             ClaudeAutomationClient,
             InsightClient,
-            SprintIQClient,
-            SprintIQError,
+            PlexityClient,
+            PlexityError,
             GraphRAGClient,
             GraphRAGTelemetry,
         )
@@ -76,8 +76,8 @@ class ReportValidationTests(unittest.TestCase):
             IntegrationAutomationClient,
             ClaudeAutomationClient,
             InsightClient,
-            SprintIQClient,
-            SprintIQError,
+            PlexityClient,
+            PlexityError,
             GraphRAGClient,
             GraphRAGTelemetry,
         ]
@@ -87,9 +87,9 @@ class ReportValidationTests(unittest.TestCase):
 
     def test_context_client_methods_exist(self):
         """Verify ContextClient has all reported methods."""
-        from sprintiq_sdk import ContextClient, SprintIQClient
+        from plexity_sdk import ContextClient, PlexityClient
 
-        client = SprintIQClient(base_url="http://test")
+        client = PlexityClient(base_url="http://test")
         context = ContextClient(client)
 
         # Methods reported in the integration report
@@ -103,9 +103,9 @@ class ReportValidationTests(unittest.TestCase):
 
     def test_mcp_client_methods_exist(self):
         """Verify MCPClient has all reported methods."""
-        from sprintiq_sdk import MCPClient, SprintIQClient
+        from plexity_sdk import MCPClient, PlexityClient
 
-        client = SprintIQClient(base_url="http://test")
+        client = PlexityClient(base_url="http://test")
         mcp = MCPClient(client)
 
         # Methods reported in the integration report
@@ -120,9 +120,9 @@ class ReportValidationTests(unittest.TestCase):
 
     def test_team_delegation_client_methods_exist(self):
         """Verify TeamDelegationClient has all reported methods."""
-        from sprintiq_sdk import TeamDelegationClient, SprintIQClient
+        from plexity_sdk import TeamDelegationClient, PlexityClient
 
-        client = SprintIQClient(base_url="http://test")
+        client = PlexityClient(base_url="http://test")
         delegation = TeamDelegationClient(client)
 
         # Methods reported in the integration report
@@ -140,9 +140,9 @@ class ReportValidationTests(unittest.TestCase):
 
     def test_integration_automation_client_methods_exist(self):
         """Verify IntegrationAutomationClient has all reported methods."""
-        from sprintiq_sdk import IntegrationAutomationClient, SprintIQClient
+        from plexity_sdk import IntegrationAutomationClient, PlexityClient
 
-        client = SprintIQClient(base_url="http://test")
+        client = PlexityClient(base_url="http://test")
         automation = IntegrationAutomationClient(client)
 
         # Methods reported in the integration report
@@ -159,9 +159,9 @@ class ReportValidationTests(unittest.TestCase):
 
     def test_claude_automation_client_methods_exist(self):
         """Verify ClaudeAutomationClient has all reported methods."""
-        from sprintiq_sdk import ClaudeAutomationClient, SprintIQClient
+        from plexity_sdk import ClaudeAutomationClient, PlexityClient
 
-        client = SprintIQClient(base_url="http://test")
+        client = PlexityClient(base_url="http://test")
         claude = ClaudeAutomationClient(client)
 
         # Methods reported in the integration report
@@ -178,7 +178,7 @@ class ReportValidationTests(unittest.TestCase):
 
     def test_integration_plan_dataclass_exists(self):
         """Verify IntegrationPlan dataclass structure."""
-        from sprintiq_sdk.automation import IntegrationPlan
+        from plexity_sdk.automation import IntegrationPlan
 
         # Create instance to verify it's a proper dataclass
         plan = IntegrationPlan(
@@ -200,10 +200,10 @@ class ReportValidationTests(unittest.TestCase):
         self.assertTrue(hasattr(IntegrationPlan, 'from_dict'))
 
     def test_base_client_context_methods_exist(self):
-        """Verify base SprintIQClient has context management methods."""
-        from sprintiq_sdk import SprintIQClient
+        """Verify base PlexityClient has context management methods."""
+        from plexity_sdk import PlexityClient
 
-        client = SprintIQClient(base_url="http://test")
+        client = PlexityClient(base_url="http://test")
 
         # Methods reported for Layer 1
         context_methods = [
@@ -216,14 +216,14 @@ class ReportValidationTests(unittest.TestCase):
         for method in context_methods:
             self.assertTrue(
                 hasattr(client, method),
-                f"SprintIQClient should have '{method}' method"
+                f"PlexityClient should have '{method}' method"
             )
 
     def test_base_client_delegation_methods_exist(self):
-        """Verify base SprintIQClient has task delegation methods."""
-        from sprintiq_sdk import SprintIQClient
+        """Verify base PlexityClient has task delegation methods."""
+        from plexity_sdk import PlexityClient
 
-        client = SprintIQClient(base_url="http://test")
+        client = PlexityClient(base_url="http://test")
 
         # Methods reported for Layer 2
         delegation_methods = [
@@ -236,14 +236,14 @@ class ReportValidationTests(unittest.TestCase):
         for method in delegation_methods:
             self.assertTrue(
                 hasattr(client, method),
-                f"SprintIQClient should have '{method}' method"
+                f"PlexityClient should have '{method}' method"
             )
 
     def test_base_client_integration_methods_exist(self):
-        """Verify base SprintIQClient has integration automation methods."""
-        from sprintiq_sdk import SprintIQClient
+        """Verify base PlexityClient has integration automation methods."""
+        from plexity_sdk import PlexityClient
 
-        client = SprintIQClient(base_url="http://test")
+        client = PlexityClient(base_url="http://test")
 
         # Methods reported for Layer 4
         integration_methods = [
@@ -254,14 +254,14 @@ class ReportValidationTests(unittest.TestCase):
         for method in integration_methods:
             self.assertTrue(
                 hasattr(client, method),
-                f"SprintIQClient should have '{method}' method"
+                f"PlexityClient should have '{method}' method"
             )
 
     def test_base_client_claude_methods_exist(self):
-        """Verify base SprintIQClient has Claude agent methods."""
-        from sprintiq_sdk import SprintIQClient
+        """Verify base PlexityClient has Claude agent methods."""
+        from plexity_sdk import PlexityClient
 
-        client = SprintIQClient(base_url="http://test")
+        client = PlexityClient(base_url="http://test")
 
         # Methods reported for Layer 5
         claude_methods = [
@@ -273,14 +273,14 @@ class ReportValidationTests(unittest.TestCase):
         for method in claude_methods:
             self.assertTrue(
                 hasattr(client, method),
-                f"SprintIQClient should have '{method}' method"
+                f"PlexityClient should have '{method}' method"
             )
 
     def test_base_client_insight_methods_exist(self):
-        """Verify base SprintIQClient has insight job methods."""
-        from sprintiq_sdk import SprintIQClient
+        """Verify base PlexityClient has insight job methods."""
+        from plexity_sdk import PlexityClient
 
-        client = SprintIQClient(base_url="http://test")
+        client = PlexityClient(base_url="http://test")
 
         # Methods for Layer 3 (Insights)
         insight_methods = [
@@ -291,14 +291,14 @@ class ReportValidationTests(unittest.TestCase):
         for method in insight_methods:
             self.assertTrue(
                 hasattr(client, method),
-                f"SprintIQClient should have '{method}' method"
+                f"PlexityClient should have '{method}' method"
             )
 
     def test_graphrag_functionality_preserved(self):
         """Verify existing GraphRAG functionality is still present."""
-        from sprintiq_sdk import GraphRAGClient, SprintIQClient
+        from plexity_sdk import GraphRAGClient, PlexityClient
 
-        client = SprintIQClient(base_url="http://test")
+        client = PlexityClient(base_url="http://test")
         graphrag = GraphRAGClient(client)
 
         # Verify key GraphRAG methods still exist (actual method names)
@@ -315,7 +315,7 @@ class ReportValidationTests(unittest.TestCase):
 
     def test_webhook_helpers_preserved(self):
         """Verify webhook helper functions are still exported."""
-        from sprintiq_sdk import (
+        from plexity_sdk import (
             compute_webhook_signature,
             verify_webhook_signature,
             extract_webhook_request,

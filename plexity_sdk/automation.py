@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, Optional, Sequence
 
-from .client import SprintIQClient
+from .client import PlexityClient
 
 __all__ = [
     "IntegrationPlan",
@@ -41,7 +41,7 @@ class IntegrationPlan:
 class IntegrationAutomationClient:
     """High-level helper that orchestrates repository automation workflows."""
 
-    def __init__(self, client: SprintIQClient, *, auth_token: Optional[str] = None) -> None:
+    def __init__(self, client: PlexityClient, *, auth_token: Optional[str] = None) -> None:
         self._client = client
         self._auth_token = auth_token
 
@@ -216,7 +216,7 @@ DEFAULT_INTEGRATION_TASKS: Sequence[Dict[str, Any]] = (
 class ClaudeAutomationClient:
     """Convenience wrapper for Claude agent-driven integration support."""
 
-    def __init__(self, client: SprintIQClient) -> None:
+    def __init__(self, client: PlexityClient) -> None:
         self._client = client
 
     def list_sessions(self, *, limit: Optional[int] = None, status: Optional[Iterable[str]] = None) -> Any:
