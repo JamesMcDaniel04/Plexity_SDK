@@ -10,6 +10,14 @@ from .webhooks import (
     verify_webhook_signature,
 )
 from .graphrag import GraphRAGClient, GraphRAGTelemetry, ensure_microsoft_graphrag_runtime
+from .frameworks import (
+    create_langchain_retriever,
+    LangChainRetrieverOptions,
+    create_llamaindex_retriever,
+    LlamaIndexRetrieverOptions,
+    create_haystack_retriever,
+    HaystackRetrieverOptions,
+)
 
 __all__ = [
     "PlexityClient",
@@ -27,4 +35,10 @@ __all__ = [
     "GraphRAGClient",
     "GraphRAGTelemetry",
     "ensure_microsoft_graphrag_runtime",
+    "create_langchain_retriever",
+    "LangChainRetrieverOptions",
+    "create_llamaindex_retriever",
+    "LlamaIndexRetrieverOptions",
+    "create_haystack_retriever",
+    "HaystackRetrieverOptions",
 ]

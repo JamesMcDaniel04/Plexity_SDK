@@ -136,20 +136,18 @@ All methods accept optional `config_overrides` which are merged into the request
 
 ## Running Tests
 
-Unit tests for the Python SDK live under `sdks/python/tests`. Execute them with:
+Unit tests for the Python SDK live under `tests`. Execute them with:
 
 ```bash
-cd sdks/python
-python -m unittest discover
+python -m pytest
 ```
 
 ## Publishing to PyPI
 
-1. Bump the version in `sdks/python/pyproject.toml`.
+1. Bump the version in `pyproject.toml`.
 2. Build the distribution artifacts:
 
    ```bash
-   cd sdks/python
    python -m build
    ```
 
@@ -160,3 +158,29 @@ python -m unittest discover
    ```
 
 Ensure tests pass before publishing and that API keys / CLI overrides are omitted from version control.
+
+## Framework Integrations
+
+Bridge the SDK with popular retrieval frameworks using the bundled helpers:
+
+```python
+from plexity_sdk import create_langchain_retriever
+
+retriever = create_langchain_retriever(
+    client,
+    org_id="org_default",
+    environment="prod",
+    top_k=7,
+    include_metadata=True,
+)
+
+documents = retriever.get_relevant_documents("Where do I configure webhooks?")
+```
+
+Each factory returns a ready-to-use retriever that calls the Plexity GraphRAG endpoints under the hood while translating query options to framework-native constructs. Available helpers:
+
+- `create_langchain_retriever` / `LangChainRetrieverOptions`
+- `create_llamaindex_retriever` / `LlamaIndexRetrieverOptions`
+- `create_haystack_retriever` / `HaystackRetrieverOptions`
+
+All helpers accept optional telemetry flags so you can correlate framework usage with orchestrator executions.
