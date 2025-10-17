@@ -191,3 +191,35 @@ Each factory returns a ready-to-use retriever that calls the Plexity GraphRAG en
 - `create_haystack_retriever` / `HaystackRetrieverOptions`
 
 All helpers accept optional telemetry flags so you can correlate framework usage with orchestrator executions.
+
+## Async Transport
+
+Install the async extra (`pip install plexity-sdk[async]`) to access the fully non-blocking `AsyncPlexityClient`:
+
+```python
+import asyncio
+from plexity_sdk import AsyncPlexityClient
+
+async def main():
+    async with AsyncPlexityClient(base_url="https://api.plexity.ai", api_key="sqk_...") as client:
+        workflows = await client.list_workflows()
+        print(workflows)
+
+asyncio.run(main())
+```
+
+Every REST endpoint available on `PlexityClient` has an awaitable counterpart—`search_graphrag`, `index_graphrag`, and automation helpers included—powered by `httpx.AsyncClient`.
+
+## Typed Models
+
+Need structured results? Import the lightweight dataclasses provided under `plexity_sdk.models` or call the typed helpers on the clients:
+
+```python
+from plexity_sdk import PlexityClient
+
+client = PlexityClient(base_url="https://api.plexity.ai", api_key="sqk_...")
+workflows = client.list_workflows_typed()  # -> List[WorkflowSummary]
+execution = client.get_execution_typed("exec-123")  # -> ExecutionSummary
+```
+
+Async callers can `await client.list_workflows_typed()` or `await client.get_execution_typed()` for the same dataclasses.

@@ -7,6 +7,7 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Union
 import requests
 
 from .types import JSONValue
+from .models import ExecutionSummary, WorkflowSummary
 
 class PlexityError(Exception):
     """Raised when the API returns an error response."""
@@ -81,6 +82,10 @@ class PlexityClient:
     # Workflows -----------------------------------------------------------------
     def list_workflows(self) -> JSONValue:
         return self._request("GET", "/workflows")
+
+    def list_workflows_typed(self) -> List[WorkflowSummary]:
+        payload = self.list_workflows()
+        return WorkflowSummary.parse_many(payload)
 
     def get_workflow(self, workflow_id: str) -> JSONValue:
         return self._request("GET", f"/workflows/{self._encode(workflow_id)}")
@@ -1196,8 +1201,32 @@ class PlexityClient:
             params["before"] = before
         return self._request("GET", "/executions", params=params)
 
+    def list_executions_typed(
+        self,
+        *,
+        status: Optional[Iterable[str]] = None,
+        limit: Optional[int] = None,
+        since: Optional[str] = None,
+        until: Optional[str] = None,
+        before: Optional[str] = None,
+    ) -> List[ExecutionSummary]:
+        payload = self.list_executions(
+            status=status,
+            limit=limit,
+            since=since,
+            until=until,
+            before=before,
+        )
+        return ExecutionSummary.parse_many(payload)
+
     def get_execution(self, execution_id: str) -> JSONValue:
         return self._request("GET", f"/executions/{self._encode(execution_id)}")
+
+    def get_execution_typed(self, execution_id: str) -> ExecutionSummary:
+        payload = self.get_execution(execution_id)
+        if not isinstance(payload, dict):
+            raise ValueError("execution payload is not a JSON object")
+        return ExecutionSummary.from_dict(payload)
 
     def list_execution_steps(self, execution_id: str, *, limit: Optional[int] = None, after_id: Optional[str] = None) -> JSONValue:
         params: Dict[str, str] = {}

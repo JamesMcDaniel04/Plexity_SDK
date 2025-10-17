@@ -5,6 +5,7 @@ from .async_client import AsyncPlexityClient
 from .automation import ClaudeAutomationClient, IntegrationAutomationClient, IntegrationPlan
 from .client import PlexityClient, PlexityError
 from .insights import InsightClient
+from .models import ExecutionSummary, WorkflowSummary
 from .webhooks import (
     compute_webhook_signature,
     extract_webhook_request,
@@ -31,6 +32,8 @@ __all__ = [
     "ClaudeAutomationClient",
     "InsightClient",
     "AsyncPlexityClient",
+    "WorkflowSummary",
+    "ExecutionSummary",
     "compute_webhook_signature",
     "verify_webhook_signature",
     "extract_webhook_request",

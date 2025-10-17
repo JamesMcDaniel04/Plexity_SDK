@@ -76,3 +76,19 @@ docs = retriever.get_relevant_documents("How do I rotate API keys?")
 ```
 
 Install optional integration dependencies with extras such as `pip install plexity-sdk[langchain]`, `pip install plexity-sdk[llamaindex]`, or `pip install plexity-sdk[haystack]`. A `frameworks` extra installs all three.
+
+### Async Transport
+
+Prefer `asyncio`? Install the async extra and swap in the `AsyncPlexityClient`, which uses `httpx.AsyncClient` under the hood:
+
+```python
+import asyncio
+from plexity_sdk import AsyncPlexityClient
+
+async def main():
+    async with AsyncPlexityClient(base_url="https://api.plexity.ai", api_key="sqk_xxx.yyy") as client:
+        workflows = await client.list_workflows()
+        print(workflows)
+
+asyncio.run(main())
+```

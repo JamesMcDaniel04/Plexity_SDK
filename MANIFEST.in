@@ -1,1 +1,3 @@
+include README.md
 include plexity_sdk/py.typed
+recursive-include docs *.md

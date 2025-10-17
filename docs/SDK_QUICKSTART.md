@@ -97,7 +97,7 @@ If you want to offload heavy GraphRAG operations to the Microsoft CLI, call `ens
 
 ## 6. Asynchronous Workflows
 
-Install the async extra (`pip install plexity-sdk[async]`) and use the `AsyncPlexityClient` wrapper to run requests in thread pools, enabling non-blocking FastAPI or asyncio applications:
+Install the async extra (`pip install plexity-sdk[async]`) and use the `AsyncPlexityClient` wrapper to issue non-blocking HTTP requests via `httpx.AsyncClient`:
 
 ```python
 import asyncio
@@ -115,7 +115,7 @@ async def main():
 asyncio.run(main())
 ```
 
-All synchronous methods exposed by `PlexityClient` are available as awaitables via the async wrapper.
+Every REST method exposed by `PlexityClient` has a coroutine twin on `AsyncPlexityClient`, so you can `await` calls like `search_graphrag`, `index_graphrag`, or `list_workflows` without thread pools.
 
 ---
 

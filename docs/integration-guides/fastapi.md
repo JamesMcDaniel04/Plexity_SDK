@@ -29,7 +29,7 @@ async def get_client() -> AsyncPlexityClient:
     try:
         yield client
     finally:
-        await client.close()
+        await client.aclose()
 
 
 @app.get("/workflows")
@@ -57,16 +57,16 @@ async def handle_webhook(request: Request):
 ## GraphRAG Search Endpoint
 
 ```python
-from plexity_sdk import GraphRAGClient
-
-
 @app.get("/search")
 async def search(query: str, client: AsyncPlexityClient = Depends(get_client)):
-    rag = GraphRAGClient(await client.unwrap(), org_id="org_default", environment="prod")
-    return await client.run_in_executor(rag.search, query)
+    return await client.search_graphrag(
+        query,
+        org_id="org_default",
+        environment="prod",
+    )
 ```
 
-`AsyncPlexityClient.unwrap()` exposes the underlying synchronous client if you need direct access to helper classes. `run_in_executor` executes synchronous helpers without blocking the main event loop.
+If you prefer the higher-level `GraphRAGClient` helper, instantiate it with a synchronous `PlexityClient`. The async transport provides native coroutine methods for all underlying HTTP endpoints, so you can work directly with `AsyncPlexityClient.search_graphrag`, `index_graphrag`, and related operations.
 
 ## Tips
 
