@@ -46,7 +46,8 @@ async def test_async_client_requests_are_awaitable():
     assert data == {"items": []}
     assert http_client.calls == 1
     await client.aclose()
-    assert http_client.closed
+    assert client._closed  # type: ignore[attr-defined]
+    assert not http_client.closed
 
 
 @pytest.mark.asyncio
@@ -63,9 +64,8 @@ async def test_async_client_retries_transport_errors(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_async_client_aclose_is_idempotent():
-    http_client = MockAsyncClient({})
-    client = AsyncPlexityClient(base_url="https://example.test", client=http_client)
+    client = AsyncPlexityClient(base_url="https://example.test")
 
     await client.aclose()
     await client.aclose()  # second close should be a no-op
-    assert http_client.closed
+    assert client._closed  # type: ignore[attr-defined]

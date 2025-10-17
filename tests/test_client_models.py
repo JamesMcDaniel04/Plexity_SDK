@@ -81,7 +81,7 @@ async def test_list_workflows_typed_async() -> None:
     assert workflows[0].id == "wf-2"
     assert not workflows[0].name
     await client.aclose()
-    assert async_client.closed
+    assert client._closed  # type: ignore[attr-defined]
 
 
 @pytest.mark.asyncio
