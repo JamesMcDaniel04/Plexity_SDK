@@ -1,6 +1,7 @@
 """Plexity Agentic Orchestrator Python SDK."""
 
 from .agentic import ContextClient, MCPClient, TeamDelegationClient
+from .async_client import AsyncPlexityClient
 from .automation import ClaudeAutomationClient, IntegrationAutomationClient, IntegrationPlan
 from .client import PlexityClient, PlexityError
 from .insights import InsightClient
@@ -29,6 +30,7 @@ __all__ = [
     "IntegrationAutomationClient",
     "ClaudeAutomationClient",
     "InsightClient",
+    "AsyncPlexityClient",
     "compute_webhook_signature",
     "verify_webhook_signature",
     "extract_webhook_request",

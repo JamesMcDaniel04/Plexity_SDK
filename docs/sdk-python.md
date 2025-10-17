@@ -84,7 +84,7 @@ except PlexityError as err:
 - Override `timeout` (seconds) when initialising the client.
 - Call `list_triggers()` to retrieve webhook endpoints (including secrets) for the authenticated organization.
 
-Refer to `docs/integration-guides/fastapi.md` for a FastAPI example using the Python SDK plus webhook validation.
+Refer to [`docs/integration-guides/fastapi.md`](integration-guides/fastapi.md) for a FastAPI example using the Python SDK plus webhook validation.
 
 ## GraphRAG Operations
 
@@ -164,18 +164,25 @@ Ensure tests pass before publishing and that API keys / CLI overrides are omitte
 Bridge the SDK with popular retrieval frameworks using the bundled helpers:
 
 ```python
-from plexity_sdk import create_langchain_retriever
+from plexity_sdk import (
+    GraphRAGClient,
+    LangChainRetrieverOptions,
+    PlexityClient,
+    create_langchain_retriever,
+)
+
+client = PlexityClient(base_url="https://api.plexity.ai", api_key="sqk_...")
+rag = GraphRAGClient(client, org_id="org_default", environment="prod")
 
 retriever = create_langchain_retriever(
-    client,
-    org_id="org_default",
-    environment="prod",
-    top_k=7,
-    include_metadata=True,
+    rag,
+    options=LangChainRetrieverOptions(max_entities=7, max_communities=7),
 )
 
 documents = retriever.get_relevant_documents("Where do I configure webhooks?")
 ```
+
+Install integration extras as needed: `pip install plexity-sdk[langchain]`, `pip install plexity-sdk[llamaindex]`, or `pip install plexity-sdk[haystack]`. A combined `frameworks` extra installs all helpers at once.
 
 Each factory returns a ready-to-use retriever that calls the Plexity GraphRAG endpoints under the hood while translating query options to framework-native constructs. Available helpers:
 

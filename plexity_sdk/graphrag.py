@@ -6,7 +6,7 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional, Sequence
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence
 
 from .client import PlexityClient
 
@@ -164,6 +164,9 @@ def ensure_microsoft_graphrag_runtime(
     force_virtualenv: bool = False,
     force_workspace: bool = False,
     extra_packages: Optional[Sequence[str]] = None,
+    skip_if_installed: bool = True,
+    logger: Optional[Callable[[str], None]] = None,
+    verbose: bool = False,
 ) -> None:
     """Provision a Microsoft GraphRAG runtime using pure Python tooling.
 
@@ -174,10 +177,26 @@ def ensure_microsoft_graphrag_runtime(
     venv_path = Path(virtual_env).resolve()
     workspace_path = Path(workspace).resolve()
 
+    def _log(message: str) -> None:
+        if logger is not None:
+            logger(message)
+        elif verbose:
+            print(f"[plexity-sdk] {message}")
+
+    def _run(command: Sequence[str], *, cwd: Optional[str] = None) -> None:
+        _log(f"Running: {' '.join(command)}")
+        try:
+            subprocess.run(command, check=True, cwd=cwd)
+        except subprocess.CalledProcessError as exc:  # pragma: no cover - surfaced in tests
+            cmd = " ".join(command)
+            raise RuntimeError(f"Command failed with exit code {exc.returncode}: {cmd}") from exc
+
     if venv_path.exists() and force_virtualenv:
+        _log(f"Removing existing virtual environment at {venv_path}")
         shutil.rmtree(venv_path)
     if not venv_path.exists():
-        subprocess.run([python_cmd, "-m", "venv", str(venv_path)], check=True)
+        _log(f"Creating virtual environment at {venv_path}")
+        _run([python_cmd, "-m", "venv", str(venv_path)])
 
     if sys.platform == "win32":
         python_bin = venv_path / "Scripts" / "python.exe"
@@ -186,21 +205,37 @@ def ensure_microsoft_graphrag_runtime(
         python_bin = venv_path / "bin" / "python"
         pip_bin = venv_path / "bin" / "pip"
 
-    # Upgrade pip and install GraphRAG
-    subprocess.run([str(pip_bin), "install", "--upgrade", "pip", "setuptools", "wheel"], check=True)
+    def _package_installed() -> bool:
+        result = subprocess.run(
+            [str(pip_bin), "show", "graphrag"],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return result.returncode == 0
+
+    should_install = True
+    if skip_if_installed and _package_installed() and not force_virtualenv:
+        should_install = False
+        _log("Detected existing graphrag installation; skipping package install.")
+
+    install_targets: List[str] = []
     package = f"graphrag=={graphrag_version}" if graphrag_version else "graphrag"
-    args = [str(pip_bin), "install", package]
+    if should_install:
+        install_targets.append(package)
     if extra_packages:
-        args.extend(extra_packages)
-    subprocess.run(args, check=True)
+        install_targets.extend(extra_packages)
+    if install_targets:
+        _run([str(pip_bin), "install", "--upgrade", "pip", "setuptools", "wheel"])
+        _run([str(pip_bin), "install", *install_targets])
 
     if not workspace_path.exists() or force_workspace:
+        _log(f"Initialising GraphRAG workspace at {workspace_path}")
         workspace_path.mkdir(parents=True, exist_ok=True)
-        subprocess.run(
+        _run(
             [str(python_bin), "-m", "graphrag", "init", "--workspace", str(workspace_path), "--non-interactive"],
-            check=True,
-            cwd=str(workspace_path)
+            cwd=str(workspace_path),
         )
 
     # Basic smoke test
-    subprocess.run([str(python_bin), "-c", "import graphrag"], check=True)
+    _run([str(python_bin), "-c", "import graphrag"])

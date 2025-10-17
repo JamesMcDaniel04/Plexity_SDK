@@ -5,13 +5,45 @@ description = "Python SDK for Plexity Agentic RAG Orchestrator"
 requires-python = ">=3.9"
 readme = "README.md"
 authors = [{ name = "Plexity", email = "support@plexity.ai" }]
+license = { text = "Proprietary" }
+keywords = ["plexity", "rag", "graph", "sdk", "agentic", "automation"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "License :: Other/Proprietary License",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
 dependencies = [
   "requests>=2.32.0"
 ]
 
 [project.optional-dependencies]
 dev = [
-  "pytest>=8.3.0"
+  "pytest>=8.3.0",
+  "pytest-asyncio>=0.23.0",
+]
+langchain = [
+  "langchain-core>=0.2.20",
+]
+llamaindex = [
+  "llama-index>=0.10.50",
+]
+haystack = [
+  "haystack-ai>=2.0.0",
+]
+frameworks = [
+  "langchain-core>=0.2.20",
+  "llama-index>=0.10.50",
+  "haystack-ai>=2.0.0",
+]
+async = [
+  "httpx>=0.27.0",
 ]
 
 [project.urls]
@@ -21,3 +53,9 @@ Documentation = "https://github.com/plexity/agentic-rag-orchestrator/tree/main/d
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+"plexity_sdk" = ["py.typed"]

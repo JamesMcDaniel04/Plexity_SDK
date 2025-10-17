@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, Optional, Sequence
 
 from .client import PlexityClient
+from .types import JSONValue
 
 __all__ = [
     "IntegrationPlan",
@@ -88,7 +89,7 @@ class IntegrationAutomationClient:
         dependencies: Sequence[str] = (),
         dev_dependencies: Sequence[str] = (),
         python_dependencies: Sequence[str] = (),
-    ) -> Any:
+    ) -> JSONValue:
         return self._client.install_integration_dependencies(
             repository_path=repository_path,
             dependencies=list(dependencies),
@@ -103,7 +104,7 @@ class IntegrationAutomationClient:
         files: Dict[str, Any],
         config: Optional[Dict[str, Any]] = None,
         create_backup: bool = True,
-    ) -> Any:
+    ) -> JSONValue:
         return self._client.write_integration_files(
             repository_path=repository_path,
             files=files,
@@ -111,7 +112,7 @@ class IntegrationAutomationClient:
             config=config,
         )
 
-    def run_tests(self, *, repository_path: str) -> Any:
+    def run_tests(self, *, repository_path: str) -> JSONValue:
         return self._client.run_integration_tests(repository_path=repository_path)
 
     def create_pull_request(
@@ -123,7 +124,7 @@ class IntegrationAutomationClient:
         base_branch: str = "main",
         title: Optional[str] = None,
         body: Optional[str] = None,
-    ) -> Any:
+    ) -> JSONValue:
         return self._client.create_github_pull_request(
             repository_url=repository_url,
             repository_path=repository_path,
@@ -219,7 +220,7 @@ class ClaudeAutomationClient:
     def __init__(self, client: PlexityClient) -> None:
         self._client = client
 
-    def list_sessions(self, *, limit: Optional[int] = None, status: Optional[Iterable[str]] = None) -> Any:
+    def list_sessions(self, *, limit: Optional[int] = None, status: Optional[Iterable[str]] = None) -> JSONValue:
         return self._client.list_claude_sessions(limit=limit, status=status)
 
     def start_session(
@@ -231,7 +232,7 @@ class ClaudeAutomationClient:
         repository_url: Optional[str] = None,
         default_branch: Optional[str] = None,
         tasks: Optional[Iterable[Dict[str, Any]]] = None,
-    ) -> Any:
+    ) -> JSONValue:
         return self._client.create_claude_session(
             repository_name=repository_name,
             team_id=team_id,
@@ -250,7 +251,7 @@ class ClaudeAutomationClient:
         team_id: Optional[str] = None,
         default_branch: Optional[str] = None,
         tasks: Optional[Iterable[Dict[str, Any]]] = None,
-    ) -> Any:
+    ) -> JSONValue:
         task_payload = list(tasks) if tasks is not None else list(DEFAULT_INTEGRATION_TASKS)
         return self.start_session(
             repository_name=repository_name,
@@ -261,10 +262,10 @@ class ClaudeAutomationClient:
             tasks=task_payload,
         )
 
-    def get_session(self, session_id: str) -> Any:
+    def get_session(self, session_id: str) -> JSONValue:
         return self._client.get_claude_session(session_id)
 
-    def log(self, session_id: str, *, message: str, level: Optional[str] = None, details: Optional[Dict[str, Any]] = None) -> Any:
+    def log(self, session_id: str, *, message: str, level: Optional[str] = None, details: Optional[Dict[str, Any]] = None) -> JSONValue:
         return self._client.log_claude_session(session_id, message=message, level=level, details=details)
 
     def update_task(
@@ -277,7 +278,7 @@ class ClaudeAutomationClient:
         started_at: Optional[str] = None,
         completed_at: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
-    ) -> Any:
+    ) -> JSONValue:
         return self._client.update_claude_task(
             session_id,
             task_id,
@@ -288,7 +289,7 @@ class ClaudeAutomationClient:
             metadata=metadata,
         )
 
-    def rerun(self, session_id: str) -> Any:
+    def rerun(self, session_id: str) -> JSONValue:
         return self._client.rerun_claude_session(session_id)
 
     def store_integration_plan(
@@ -299,7 +300,7 @@ class ClaudeAutomationClient:
         workflow: Optional[Dict[str, Any]] = None,
         confidence_score: Optional[float] = None,
         metadata: Optional[Dict[str, Any]] = None,
-    ) -> Any:
+    ) -> JSONValue:
         return self._client.create_claude_integration_plan(
             repository=repository,
             recommendations=recommendations,
@@ -307,4 +308,3 @@ class ClaudeAutomationClient:
             confidence_score=confidence_score,
             metadata=metadata,
         )
-

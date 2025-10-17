@@ -57,16 +57,22 @@ Set `use_microsoft_cli=True` to delegate the query to the Microsoft GraphRAG CLI
 The SDK ships optional helpers for popular retrieval frameworks:
 
 ```python
-from plexity_sdk import create_langchain_retriever
+from plexity_sdk import (
+    PlexityClient,
+    GraphRAGClient,
+    create_langchain_retriever,
+    LangChainRetrieverOptions,
+)
+
+client = PlexityClient(base_url="https://api.plexity.ai", api_key="sqk_xxx.yyy")
+rag = GraphRAGClient(client, org_id="org_default", environment="prod")
 
 retriever = create_langchain_retriever(
-    client,
-    org_id="org_default",
-    environment="prod",
-    top_k=5,
+    rag,
+    options=LangChainRetrieverOptions(max_entities=5, max_communities=5),
 )
 
 docs = retriever.get_relevant_documents("How do I rotate API keys?")
 ```
 
-Similar helpers exist for LlamaIndex (`create_llamaindex_retriever`) and Haystack (`create_haystack_retriever`). Each factory accepts structured option dataclasses so you can override query settings per framework while delegating transport and telemetry to the SDK.
+Install optional integration dependencies with extras such as `pip install plexity-sdk[langchain]`, `pip install plexity-sdk[llamaindex]`, or `pip install plexity-sdk[haystack]`. A `frameworks` extra installs all three.

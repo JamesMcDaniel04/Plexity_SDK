@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, Iterable, Optional, Sequence, Union
 
 from .client import PlexityClient
+from .types import JSONValue
 
 __all__ = ["ContextClient", "MCPClient", "TeamDelegationClient"]
 
@@ -22,7 +23,7 @@ class ContextClient:
         priority: Optional[str] = None,
         search: Optional[str] = None,
         include_inactive: Optional[bool] = None,
-    ) -> Any:
+    ) -> JSONValue:
         return self._client.list_context_entries(
             page=page,
             limit=limit,
@@ -41,7 +42,7 @@ class ContextClient:
         entry_type: Optional[str] = None,
         tags: Optional[Iterable[str]] = None,
         priority: Optional[str] = None,
-    ) -> Any:
+    ) -> JSONValue:
         return self._client.create_context_entry(
             title=title,
             content=content,
@@ -51,7 +52,7 @@ class ContextClient:
             priority=priority,
         )
 
-    def get(self, context_id: str) -> Any:
+    def get(self, context_id: str) -> JSONValue:
         return self._client.get_context_entry(context_id)
 
     def update(
@@ -65,7 +66,7 @@ class ContextClient:
         tags: Optional[Iterable[str]] = None,
         priority: Optional[str] = None,
         is_active: Optional[bool] = None,
-    ) -> Any:
+    ) -> JSONValue:
         return self._client.update_context_entry(
             context_id,
             title=title,
@@ -77,7 +78,7 @@ class ContextClient:
             is_active=is_active,
         )
 
-    def delete(self, context_id: str) -> Any:
+    def delete(self, context_id: str) -> JSONValue:
         return self._client.delete_context_entry(context_id)
 
 
@@ -87,7 +88,7 @@ class MCPClient:
     def __init__(self, client: PlexityClient) -> None:
         self._client = client
 
-    def list_servers(self) -> Any:
+    def list_servers(self) -> JSONValue:
         return self._client.list_mcp_servers()
 
     def create_server(
@@ -97,7 +98,7 @@ class MCPClient:
         base_url: str,
         api_key: Optional[str] = None,
         enabled: Optional[bool] = None,
-    ) -> Any:
+    ) -> JSONValue:
         return self._client.create_mcp_server(
             name=name,
             base_url=base_url,
@@ -113,7 +114,7 @@ class MCPClient:
         base_url: Optional[str] = None,
         api_key: Optional[str] = None,
         enabled: Optional[bool] = None,
-    ) -> Any:
+    ) -> JSONValue:
         return self._client.update_mcp_server(
             server_id,
             name=name,
@@ -122,10 +123,10 @@ class MCPClient:
             enabled=enabled,
         )
 
-    def delete_server(self, server_id: str) -> Any:
+    def delete_server(self, server_id: str) -> JSONValue:
         return self._client.delete_mcp_server(server_id)
 
-    def check_health(self, server_id: str) -> Any:
+    def check_health(self, server_id: str) -> JSONValue:
         return self._client.get_mcp_server_health(server_id)
 
 
@@ -146,7 +147,7 @@ class TeamDelegationClient:
         status: Optional[Union[str, Sequence[str]]] = None,
         assignee_id: Optional[str] = None,
         limit: Optional[int] = None,
-    ) -> Any:
+    ) -> JSONValue:
         filters_team = team_id or self._team_id
         return self._client.list_delegation_tasks(
             team_id=filters_team,
@@ -177,7 +178,7 @@ class TeamDelegationClient:
         delegated_by: Optional[str] = None,
         workload: Optional[float] = None,
         notes: Optional[str] = None,
-    ) -> Any:
+    ) -> JSONValue:
         target_team = team_id or self._team_id
         if not target_team:
             raise ValueError("team_id is required")
@@ -203,7 +204,7 @@ class TeamDelegationClient:
             notes=notes,
         )
 
-    def get_task(self, task_id: str) -> Any:
+    def get_task(self, task_id: str) -> JSONValue:
         return self._client.get_delegation_task(task_id)
 
     def update_task_status(
@@ -213,7 +214,7 @@ class TeamDelegationClient:
         status: str,
         payload: Optional[Dict[str, Any]] = None,
         reason: Optional[str] = None,
-    ) -> Any:
+    ) -> JSONValue:
         return self._client.update_delegation_task_status(
             task_id,
             status=status,
@@ -228,7 +229,7 @@ class TeamDelegationClient:
         status: str,
         payload: Optional[Dict[str, Any]] = None,
         reason: Optional[str] = None,
-    ) -> Any:
+    ) -> JSONValue:
         return self._client.update_delegation_assignment_status(
             assignment_id,
             status=status,
@@ -243,7 +244,7 @@ class TeamDelegationClient:
         event_type: str,
         payload: Optional[Dict[str, Any]] = None,
         member_id: Optional[str] = None,
-    ) -> Any:
+    ) -> JSONValue:
         return self._client.add_delegation_task_update(
             task_id,
             event_type=event_type,
@@ -259,7 +260,7 @@ class TeamDelegationClient:
         reason: Optional[str] = None,
         member_id: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
-    ) -> Any:
+    ) -> JSONValue:
         return self._client.bulk_update_delegation_task_status(
             task_ids=task_ids,
             status=status,
@@ -279,7 +280,7 @@ class TeamDelegationClient:
         workload: Optional[float] = None,
         notes: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
-    ) -> Any:
+    ) -> JSONValue:
         return self._client.bulk_assign_delegation_tasks(
             task_ids=task_ids,
             assignee_ids=assignee_ids,
@@ -299,7 +300,7 @@ class TeamDelegationClient:
         limit: Optional[int] = None,
         include_updates: Optional[bool] = None,
         format: str = "json",
-    ) -> Any:
+    ) -> JSONValue:
         target_team = team_id or self._team_id
         return self._client.export_delegation_tasks(
             team_id=target_team,
@@ -308,4 +309,3 @@ class TeamDelegationClient:
             include_updates=include_updates,
             format=format,
         )
-

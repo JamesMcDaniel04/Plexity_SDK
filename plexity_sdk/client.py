@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+import time
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Union
 
 import requests
 
+from .types import JSONValue
 
 class PlexityError(Exception):
     """Raised when the API returns an error response."""
@@ -27,6 +29,10 @@ class PlexityClient:
         timeout: float = 30.0,
         session: Optional[requests.Session] = None,
         default_headers: Optional[Dict[str, str]] = None,
+        max_retries: int = 0,
+        retry_backoff_factor: float = 0.5,
+        retry_status_codes: Optional[Sequence[int]] = None,
+        retry_http_methods: Optional[Sequence[str]] = None,
     ) -> None:
         if not base_url:
             raise ValueError("base_url is required")
@@ -35,7 +41,15 @@ class PlexityClient:
         self.token = token
         self.timeout = timeout
         self._session = session or requests.Session()
+        self._owns_session = session is None
+        self._closed = False
         self.default_headers: Dict[str, str] = dict(default_headers or {})
+        self.max_retries = max(0, int(max_retries))
+        self.retry_backoff_factor = max(0.0, float(retry_backoff_factor))
+        default_statuses = (408, 425, 429, 500, 502, 503, 504)
+        self.retry_status_codes = {int(code) for code in (retry_status_codes or default_statuses)}
+        default_methods = ("GET", "HEAD", "OPTIONS")
+        self.retry_http_methods = {method.upper() for method in (retry_http_methods or default_methods)}
 
     def set_api_key(self, api_key: Optional[str]) -> None:
         self.api_key = api_key
@@ -49,39 +63,54 @@ class PlexityClient:
         else:
             self.default_headers[name] = value
 
+    def close(self) -> None:
+        if self._closed:
+            return
+        if self._owns_session:
+            self._session.close()
+        self._closed = True
+
+    def __enter__(self) -> "PlexityClient":
+        if self._closed:
+            raise RuntimeError("cannot reuse a closed PlexityClient")
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()
+
     # Workflows -----------------------------------------------------------------
-    def list_workflows(self) -> Any:
+    def list_workflows(self) -> JSONValue:
         return self._request("GET", "/workflows")
 
-    def get_workflow(self, workflow_id: str) -> Any:
+    def get_workflow(self, workflow_id: str) -> JSONValue:
         return self._request("GET", f"/workflows/{self._encode(workflow_id)}")
 
-    def save_workflow(self, spec: Dict[str, Any]) -> Any:
+    def save_workflow(self, spec: Dict[str, Any]) -> JSONValue:
         workflow_id = spec.get("id")
         if not workflow_id:
             raise ValueError("spec.id is required")
         payload = {"id": workflow_id, "spec": spec}
         return self._request("POST", "/workflows", json_payload=payload)
 
-    def delete_workflow(self, workflow_id: str) -> Any:
+    def delete_workflow(self, workflow_id: str) -> JSONValue:
         return self._request("DELETE", f"/workflows/{self._encode(workflow_id)}")
 
     # Team integrations -------------------------------------------------------
-    def get_team_integration_meta(self) -> Any:
+    def get_team_integration_meta(self) -> JSONValue:
         return self._request("GET", "/team-delegation/integrations/meta")
 
-    def list_team_integration_apps(self, *, team_id: Optional[str] = None) -> Any:
+    def list_team_integration_apps(self, *, team_id: Optional[str] = None) -> JSONValue:
         params: Dict[str, str] = {}
         if team_id:
             params["team_id"] = team_id
         resp = self._request("GET", "/team-delegation/integrations/apps", params=params or None)
         return resp.get("apps", []) if isinstance(resp, dict) else resp
 
-    def create_team_integration_app(self, payload: Dict[str, Any]) -> Any:
+    def create_team_integration_app(self, payload: Dict[str, Any]) -> JSONValue:
         resp = self._request("POST", "/team-delegation/integrations/apps", json_payload=payload)
         return resp.get("app") if isinstance(resp, dict) else resp
 
-    def update_team_integration_app(self, app_id: str, payload: Dict[str, Any]) -> Any:
+    def update_team_integration_app(self, app_id: str, payload: Dict[str, Any]) -> JSONValue:
         resp = self._request(
             "PATCH",
             f"/team-delegation/integrations/apps/{self._encode(app_id)}",
@@ -92,14 +121,14 @@ class PlexityClient:
     def delete_team_integration_app(self, app_id: str) -> None:
         self._request("DELETE", f"/team-delegation/integrations/apps/{self._encode(app_id)}")
 
-    def list_team_integration_webhooks(self, app_id: str) -> Any:
+    def list_team_integration_webhooks(self, app_id: str) -> JSONValue:
         resp = self._request(
             "GET",
             f"/team-delegation/integrations/apps/{self._encode(app_id)}/webhooks",
         )
         return resp.get("webhooks", []) if isinstance(resp, dict) else resp
 
-    def register_team_integration_webhook(self, app_id: str, payload: Dict[str, Any]) -> Any:
+    def register_team_integration_webhook(self, app_id: str, payload: Dict[str, Any]) -> JSONValue:
         resp = self._request(
             "POST",
             f"/team-delegation/integrations/apps/{self._encode(app_id)}/webhooks",
@@ -107,7 +136,7 @@ class PlexityClient:
         )
         return resp.get("webhook") if isinstance(resp, dict) else resp
 
-    def update_team_integration_webhook(self, webhook_id: str, payload: Dict[str, Any]) -> Any:
+    def update_team_integration_webhook(self, webhook_id: str, payload: Dict[str, Any]) -> JSONValue:
         resp = self._request(
             "PATCH",
             f"/team-delegation/integrations/webhooks/{self._encode(webhook_id)}",
@@ -118,14 +147,14 @@ class PlexityClient:
     def delete_team_integration_webhook(self, webhook_id: str) -> None:
         self._request("DELETE", f"/team-delegation/integrations/webhooks/{self._encode(webhook_id)}")
 
-    def list_team_integration_plugins(self, app_id: str) -> Any:
+    def list_team_integration_plugins(self, app_id: str) -> JSONValue:
         resp = self._request(
             "GET",
             f"/team-delegation/integrations/apps/{self._encode(app_id)}/plugins",
         )
         return resp.get("plugins", []) if isinstance(resp, dict) else resp
 
-    def register_team_integration_plugin(self, app_id: str, payload: Dict[str, Any]) -> Any:
+    def register_team_integration_plugin(self, app_id: str, payload: Dict[str, Any]) -> JSONValue:
         resp = self._request(
             "POST",
             f"/team-delegation/integrations/apps/{self._encode(app_id)}/plugins",
@@ -133,7 +162,7 @@ class PlexityClient:
         )
         return resp.get("plugin") if isinstance(resp, dict) else resp
 
-    def update_team_integration_plugin(self, plugin_id: str, payload: Dict[str, Any]) -> Any:
+    def update_team_integration_plugin(self, plugin_id: str, payload: Dict[str, Any]) -> JSONValue:
         resp = self._request(
             "PATCH",
             f"/team-delegation/integrations/plugins/{self._encode(plugin_id)}",
@@ -144,7 +173,7 @@ class PlexityClient:
     def delete_team_integration_plugin(self, plugin_id: str) -> None:
         self._request("DELETE", f"/team-delegation/integrations/plugins/{self._encode(plugin_id)}")
 
-    def list_team_integration_events(self, *, team_id: Optional[str] = None, limit: Optional[int] = None) -> Any:
+    def list_team_integration_events(self, *, team_id: Optional[str] = None, limit: Optional[int] = None) -> JSONValue:
         params: Dict[str, str] = {}
         if team_id:
             params["team_id"] = team_id
@@ -153,7 +182,7 @@ class PlexityClient:
         resp = self._request("GET", "/team-delegation/integrations/events", params=params or None)
         return resp.get("events", []) if isinstance(resp, dict) else resp
 
-    def emit_team_integration_test(self, app_id: str, payload: Dict[str, Any]) -> Any:
+    def emit_team_integration_test(self, app_id: str, payload: Dict[str, Any]) -> JSONValue:
         return self._request(
             "POST",
             f"/team-delegation/integrations/apps/{self._encode(app_id)}/test",
@@ -205,7 +234,7 @@ class PlexityClient:
         job_type: Optional[str] = None,
         team_id: Optional[str] = None,
         limit: Optional[int] = None,
-    ) -> Any:
+) -> JSONValue:
         params: Dict[str, str] = {}
         if status:
             values = [str(item).strip() for item in status if str(item).strip()]
@@ -220,7 +249,7 @@ class PlexityClient:
         resp = self._request("GET", "/insights/jobs", params=params or None)
         return resp.get("jobs", []) if isinstance(resp, dict) else resp
 
-    def get_latest_insight_job(self, *, job_type: Optional[str] = None) -> Any:
+    def get_latest_insight_job(self, *, job_type: Optional[str] = None) -> JSONValue:
         params: Dict[str, str] = {}
         if job_type:
             params["job_type"] = job_type
@@ -236,7 +265,7 @@ class PlexityClient:
         team_id: Optional[str] = None,
         priority: Optional[int] = None,
         delay_ms: Optional[int] = None,
-    ) -> Any:
+    ) -> JSONValue:
         job_value = (job_type or "").strip()
         if not job_value:
             raise ValueError("job_type is required")
@@ -255,14 +284,14 @@ class PlexityClient:
         resp = self._request("POST", "/insights/jobs", json_payload=body)
         return resp.get("job") if isinstance(resp, dict) else resp
 
-    def get_insight_job(self, job_id: str) -> Any:
+    def get_insight_job(self, job_id: str) -> JSONValue:
         identifier = (job_id or "").strip()
         if not identifier:
             raise ValueError("job_id is required")
         resp = self._request("GET", f"/insights/jobs/{self._encode(identifier)}")
         return resp.get("job") if isinstance(resp, dict) else resp
 
-    def get_insight_job_result(self, job_id: str) -> Any:
+    def get_insight_job_result(self, job_id: str) -> JSONValue:
         identifier = (job_id or "").strip()
         if not identifier:
             raise ValueError("job_id is required")
@@ -282,7 +311,7 @@ class PlexityClient:
         priority: Optional[str] = None,
         search: Optional[str] = None,
         include_inactive: Optional[bool] = None,
-    ) -> Any:
+    ) -> JSONValue:
         params: Dict[str, str] = {}
         if page is not None:
             params["page"] = str(int(page))
@@ -307,7 +336,7 @@ class PlexityClient:
         entry_type: Optional[str] = None,
         tags: Optional[Iterable[str]] = None,
         priority: Optional[str] = None,
-    ) -> Any:
+    ) -> JSONValue:
         body: Dict[str, Any] = {
             "title": (title or "").strip(),
             "content": (content or "").strip(),
@@ -326,7 +355,7 @@ class PlexityClient:
             body["priority"] = priority
         return self._request("POST", "/context", json_payload=body)
 
-    def get_context_entry(self, context_id: str) -> Any:
+    def get_context_entry(self, context_id: str) -> JSONValue:
         return self._request("GET", f"/context/{self._encode(context_id)}")
 
     def update_context_entry(
@@ -340,7 +369,7 @@ class PlexityClient:
         tags: Optional[Iterable[str]] = None,
         priority: Optional[str] = None,
         is_active: Optional[bool] = None,
-    ) -> Any:
+    ) -> JSONValue:
         payload: Dict[str, Any] = {}
         if title is not None:
             payload["title"] = title
@@ -360,10 +389,10 @@ class PlexityClient:
             raise ValueError("at least one field must be provided for update")
         return self._request("PUT", f"/context/{self._encode(context_id)}", json_payload=payload)
 
-    def delete_context_entry(self, context_id: str) -> Any:
+    def delete_context_entry(self, context_id: str) -> JSONValue:
         return self._request("DELETE", f"/context/{self._encode(context_id)}")
 
-    def list_mcp_servers(self) -> Any:
+    def list_mcp_servers(self) -> JSONValue:
         return self._request("GET", "/mcp/servers")
 
     def create_mcp_server(
@@ -373,7 +402,7 @@ class PlexityClient:
         base_url: str,
         api_key: Optional[str] = None,
         enabled: Optional[bool] = None,
-    ) -> Any:
+    ) -> JSONValue:
         payload: Dict[str, Any] = {
             "name": (name or "").strip(),
             "base_url": (base_url or "").strip(),
@@ -396,7 +425,7 @@ class PlexityClient:
         base_url: Optional[str] = None,
         api_key: Optional[str] = None,
         enabled: Optional[bool] = None,
-    ) -> Any:
+    ) -> JSONValue:
         payload: Dict[str, Any] = {}
         if name is not None:
             payload["name"] = name
@@ -410,10 +439,10 @@ class PlexityClient:
             raise ValueError("at least one field must be provided for update")
         return self._request("PUT", f"/mcp/servers/{self._encode(server_id)}", json_payload=payload)
 
-    def delete_mcp_server(self, server_id: str) -> Any:
+    def delete_mcp_server(self, server_id: str) -> JSONValue:
         return self._request("DELETE", f"/mcp/servers/{self._encode(server_id)}")
 
-    def get_mcp_server_health(self, server_id: str) -> Any:
+    def get_mcp_server_health(self, server_id: str) -> JSONValue:
         return self._request("GET", f"/mcp/servers/{self._encode(server_id)}/health")
 
     # Team delegation & task orchestration --------------------------------------
@@ -425,7 +454,7 @@ class PlexityClient:
         status: Optional[Union[str, Sequence[str]]] = None,
         assignee_id: Optional[str] = None,
         limit: Optional[int] = None,
-    ) -> Any:
+    ) -> JSONValue:
         params: Dict[str, str] = {}
         if team_id:
             params["team_id"] = team_id
@@ -462,7 +491,7 @@ class PlexityClient:
         delegated_by: Optional[str] = None,
         workload: Optional[float] = None,
         notes: Optional[str] = None,
-    ) -> Any:
+    ) -> JSONValue:
         team_value = (team_id or "").strip()
         if not team_value:
             raise ValueError("team_id is required")
@@ -509,7 +538,7 @@ class PlexityClient:
             payload["notes"] = notes
         return self._request("POST", "/team-delegation/tasks", json_payload=payload)
 
-    def get_delegation_task(self, task_id: str) -> Any:
+    def get_delegation_task(self, task_id: str) -> JSONValue:
         return self._request("GET", f"/team-delegation/tasks/{self._encode(task_id)}")
 
     def update_delegation_task_status(
@@ -519,7 +548,7 @@ class PlexityClient:
         status: str,
         payload: Optional[Dict[str, Any]] = None,
         reason: Optional[str] = None,
-    ) -> Any:
+    ) -> JSONValue:
         status_value = (status or "").strip().lower()
         if not status_value:
             raise ValueError("status is required")
@@ -541,7 +570,7 @@ class PlexityClient:
         status: str,
         payload: Optional[Dict[str, Any]] = None,
         reason: Optional[str] = None,
-    ) -> Any:
+    ) -> JSONValue:
         status_value = (status or "").strip().lower()
         if not status_value:
             raise ValueError("status is required")
@@ -563,7 +592,7 @@ class PlexityClient:
         event_type: str,
         payload: Optional[Dict[str, Any]] = None,
         member_id: Optional[str] = None,
-    ) -> Any:
+    ) -> JSONValue:
         event_value = (event_type or "").strip()
         if not event_value:
             raise ValueError("event_type is required")
@@ -588,7 +617,7 @@ class PlexityClient:
         reason: Optional[str] = None,
         member_id: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
-    ) -> Any:
+    ) -> JSONValue:
         ids = [str(value) for value in task_ids if str(value)]
         if not ids:
             raise ValueError("task_ids is required")
@@ -622,7 +651,7 @@ class PlexityClient:
         workload: Optional[float] = None,
         notes: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
-    ) -> Any:
+    ) -> JSONValue:
         task_values = [str(value) for value in task_ids if str(value)]
         if not task_values:
             raise ValueError("task_ids is required")
@@ -659,7 +688,7 @@ class PlexityClient:
         limit: Optional[int] = None,
         include_updates: Optional[bool] = None,
         format: str = "json",
-    ) -> Any:
+    ) -> JSONValue:
         params: Dict[str, str] = {"format": format}
         if team_id:
             params["team_id"] = team_id
@@ -683,7 +712,7 @@ class PlexityClient:
         shallow_clone: bool = True,
         refresh_analysis: Optional[bool] = None,
         auth_token: Optional[str] = None,
-    ) -> Any:
+    ) -> JSONValue:
         repo = (repository_url or "").strip()
         if not repo:
             raise ValueError("repository_url is required")
@@ -705,7 +734,7 @@ class PlexityClient:
         shallow_clone: bool = True,
         refresh_analysis: Optional[bool] = None,
         auth_token: Optional[str] = None,
-    ) -> Any:
+    ) -> JSONValue:
         repo = (repository_url or "").strip()
         if not repo:
             raise ValueError("repository_url is required")
@@ -730,7 +759,7 @@ class PlexityClient:
         dependencies: Optional[Iterable[str]] = None,
         dev_dependencies: Optional[Iterable[str]] = None,
         python_dependencies: Optional[Iterable[str]] = None,
-    ) -> Any:
+    ) -> JSONValue:
         path = (repository_path or "").strip()
         if not path:
             raise ValueError("repository_path is required")
@@ -750,7 +779,7 @@ class PlexityClient:
         files: Dict[str, Any],
         create_backup: Optional[bool] = None,
         config: Optional[Dict[str, Any]] = None,
-    ) -> Any:
+    ) -> JSONValue:
         path = (repository_path or "").strip()
         if not path:
             raise ValueError("repository_path is required")
@@ -763,7 +792,7 @@ class PlexityClient:
             payload["config"] = config
         return self._request("POST", "/integration/write-files", json_payload=payload)
 
-    def run_integration_tests(self, *, repository_path: str) -> Any:
+    def run_integration_tests(self, *, repository_path: str) -> JSONValue:
         path = (repository_path or "").strip()
         if not path:
             raise ValueError("repository_path is required")
@@ -780,7 +809,7 @@ class PlexityClient:
         title: Optional[str] = None,
         body: Optional[str] = None,
         auth_token: Optional[str] = None,
-    ) -> Any:
+    ) -> JSONValue:
         repo = (repository_url or "").strip()
         if not repo:
             raise ValueError("repository_url is required")
@@ -811,7 +840,7 @@ class PlexityClient:
         workflow: Optional[Dict[str, Any]] = None,
         confidence_score: Optional[float] = None,
         metadata: Optional[Dict[str, Any]] = None,
-    ) -> Any:
+    ) -> JSONValue:
         payload: Dict[str, Any] = {}
         if repository is not None:
             payload["repository"] = repository
@@ -825,7 +854,7 @@ class PlexityClient:
             payload["metadata"] = metadata
         return self._request("POST", "/claude/integration-plans", json_payload=payload)
 
-    def list_claude_integration_plans(self, *, limit: Optional[int] = None) -> Any:
+    def list_claude_integration_plans(self, *, limit: Optional[int] = None) -> JSONValue:
         params: Dict[str, str] = {}
         if limit is not None:
             params["limit"] = str(int(limit))
@@ -836,7 +865,7 @@ class PlexityClient:
         *,
         limit: Optional[int] = None,
         status: Optional[Iterable[str]] = None,
-    ) -> Any:
+    ) -> JSONValue:
         params: Dict[str, str] = {}
         if limit is not None:
             params["limit"] = str(int(limit))
@@ -853,7 +882,7 @@ class PlexityClient:
         repository_url: Optional[str] = None,
         default_branch: Optional[str] = None,
         tasks: Optional[Iterable[Dict[str, Any]]] = None,
-    ) -> Any:
+    ) -> JSONValue:
         name = (repository_name or "").strip()
         if not name:
             raise ValueError("repository_name is required")
@@ -870,7 +899,7 @@ class PlexityClient:
             payload["tasks"] = [dict(task) for task in tasks]
         return self._request("POST", "/claude-agent/sessions", json_payload=payload)
 
-    def get_claude_session(self, session_id: str) -> Any:
+    def get_claude_session(self, session_id: str) -> JSONValue:
         session = (session_id or "").strip()
         if not session:
             raise ValueError("session_id is required")
@@ -883,7 +912,7 @@ class PlexityClient:
         message: str,
         level: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
-    ) -> Any:
+    ) -> JSONValue:
         session = (session_id or "").strip()
         if not session:
             raise ValueError("session_id is required")
@@ -911,7 +940,7 @@ class PlexityClient:
         started_at: Optional[str] = None,
         completed_at: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
-    ) -> Any:
+    ) -> JSONValue:
         session = (session_id or "").strip()
         task = (task_id or "").strip()
         if not session or not task:
@@ -935,7 +964,7 @@ class PlexityClient:
             json_payload=payload,
         )
 
-    def rerun_claude_session(self, session_id: str) -> Any:
+    def rerun_claude_session(self, session_id: str) -> JSONValue:
         session = (session_id or "").strip()
         if not session:
             raise ValueError("session_id is required")
@@ -963,7 +992,7 @@ class PlexityClient:
         engine: Optional[str] = None,
         use_microsoft_cli: Optional[bool] = None,
         microsoft_cli: Optional[Dict[str, Any]] = None,
-    ) -> Any:
+    ) -> JSONValue:
         text = (query or "").strip()
         if not text:
             raise ValueError("query is required")
@@ -1018,7 +1047,7 @@ class PlexityClient:
         schema_version: Optional[str] = None,
         document_ids: Optional[Iterable[str]] = None,
         config_overrides: Optional[Dict[str, Any]] = None,
-    ) -> Any:
+    ) -> JSONValue:
         payload = self._prepare_graphrag_index_payload(
             documents,
             org_id=org_id,
@@ -1060,7 +1089,7 @@ class PlexityClient:
         schema_version: Optional[str] = None,
         document_ids: Optional[Iterable[str]] = None,
         config_overrides: Optional[Dict[str, Any]] = None,
-    ) -> Any:
+    ) -> JSONValue:
         payload = self._prepare_graphrag_index_payload(
             documents,
             org_id=org_id,
@@ -1088,7 +1117,7 @@ class PlexityClient:
         org_id: Optional[str] = None,
         team_id: Optional[str] = None,
         environment: Optional[str] = None,
-    ) -> Any:
+    ) -> JSONValue:
         params = self._graphrag_context_query(org_id, team_id, environment)
         return self._request("GET", "/graphrag/stats", params=params)
 
@@ -1103,7 +1132,7 @@ class PlexityClient:
         org_id: Optional[str] = None,
         team_id: Optional[str] = None,
         environment: Optional[str] = None,
-    ) -> Any:
+    ) -> JSONValue:
         params = self._graphrag_context_query(org_id, team_id, environment)
         if query:
             params["query"] = query
@@ -1130,7 +1159,7 @@ class PlexityClient:
         org_id: Optional[str] = None,
         team_id: Optional[str] = None,
         environment: Optional[str] = None,
-    ) -> Any:
+    ) -> JSONValue:
         params = self._graphrag_context_query(org_id, team_id, environment)
         if query:
             params["query"] = query
@@ -1153,7 +1182,7 @@ class PlexityClient:
         since: Optional[str] = None,
         until: Optional[str] = None,
         before: Optional[str] = None,
-    ) -> Any:
+    ) -> JSONValue:
         params: Dict[str, str] = {}
         if status:
             params["status"] = ",".join(status)
@@ -1167,10 +1196,10 @@ class PlexityClient:
             params["before"] = before
         return self._request("GET", "/executions", params=params)
 
-    def get_execution(self, execution_id: str) -> Any:
+    def get_execution(self, execution_id: str) -> JSONValue:
         return self._request("GET", f"/executions/{self._encode(execution_id)}")
 
-    def list_execution_steps(self, execution_id: str, *, limit: Optional[int] = None, after_id: Optional[str] = None) -> Any:
+    def list_execution_steps(self, execution_id: str, *, limit: Optional[int] = None, after_id: Optional[str] = None) -> JSONValue:
         params: Dict[str, str] = {}
         if limit is not None:
             params["limit"] = str(limit)
@@ -1178,7 +1207,7 @@ class PlexityClient:
             params["after_id"] = after_id
         return self._request("GET", f"/executions/{self._encode(execution_id)}/steps", params=params)
 
-    def start_execution(self, *, workflow_id: str, input: Any | None = None, kind: Optional[str] = None) -> Any:
+    def start_execution(self, *, workflow_id: str, input: Any | None = None, kind: Optional[str] = None) -> JSONValue:
         payload: Dict[str, Any] = {"workflow_id": workflow_id}
         if input is not None:
             payload["input"] = input
@@ -1186,17 +1215,17 @@ class PlexityClient:
             payload["kind"] = kind
         return self._request("POST", "/executions", json_payload=payload)
 
-    def cancel_execution(self, execution_id: str) -> Any:
+    def cancel_execution(self, execution_id: str) -> JSONValue:
         return self._request("POST", f"/executions/{self._encode(execution_id)}/cancel")
 
-    def resume_step(self, token: str, payload: Optional[Dict[str, Any]] = None) -> Any:
+    def resume_step(self, token: str, payload: Optional[Dict[str, Any]] = None) -> JSONValue:
         return self._request("POST", f"/resume/{self._encode(token)}", json_payload=payload or {})
 
-    def list_events(self, execution_id: str) -> Any:
+    def list_events(self, execution_id: str) -> JSONValue:
         return self._request("GET", f"/events/{self._encode(execution_id)}")
 
     # Triggers ------------------------------------------------------------------
-    def list_triggers(self) -> Any:
+    def list_triggers(self) -> JSONValue:
         return self._request("GET", "/triggers")
 
     # Internal helpers ----------------------------------------------------------
@@ -1208,7 +1237,9 @@ class PlexityClient:
         params: Optional[Dict[str, str]] = None,
         json_payload: Any | None = None,
         headers: Optional[Dict[str, str]] = None,
-    ) -> Any:
+    ) -> JSONValue:
+        if self._closed:
+            raise RuntimeError("cannot send requests after the client has been closed")
         url = self._build_url(path)
         req_headers: Dict[str, str] = dict(self.default_headers)
         if headers:
@@ -1218,16 +1249,38 @@ class PlexityClient:
         if self.token:
             req_headers["authorization"] = f"Bearer {self.token}"
 
-        response = self._session.request(
-            method,
-            url,
-            params=params,
-            json=json_payload,
-            headers=req_headers,
-            timeout=self.timeout,
-        )
+        response = None
+        last_error: Optional[BaseException] = None
+        for attempt in range(self.max_retries + 1):
+            try:
+                response = self._session.request(
+                    method,
+                    url,
+                    params=params,
+                    json=json_payload,
+                    headers=req_headers,
+                    timeout=self.timeout,
+                )
+            except requests.RequestException as exc:  # pragma: no cover - exercised in tests
+                last_error = exc
+                if attempt >= self.max_retries:
+                    payload = {"error": str(exc), "type": exc.__class__.__name__}
+                    raise PlexityError(0, "transport_error", payload) from exc
+                self._sleep_backoff(attempt + 1)
+                continue
+
+            if self._should_retry_response(method, response.status_code) and attempt < self.max_retries:
+                self._sleep_backoff(attempt + 1)
+                continue
+
+            break
+
+        if response is None:
+            payload = {"error": str(last_error) if last_error else "unknown transport error"}
+            raise PlexityError(0, "transport_error", payload)
+
         if not response.ok:
-            payload: Any
+            payload: JSONValue
             try:
                 payload = response.json()
             except ValueError:
@@ -1247,6 +1300,15 @@ class PlexityClient:
             return json.loads(response.text)
         except json.JSONDecodeError:
             return response.text
+
+    def _should_retry_response(self, method: str, status_code: int) -> bool:
+        return method.upper() in self.retry_http_methods and status_code in self.retry_status_codes
+
+    def _sleep_backoff(self, attempt: int) -> None:
+        if self.retry_backoff_factor <= 0:
+            return
+        delay = self.retry_backoff_factor * (2 ** (attempt - 1))
+        time.sleep(delay)
 
     def _prepare_graphrag_index_payload(
         self,
