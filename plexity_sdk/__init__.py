@@ -1,5 +1,7 @@
 """Plexity Agentic Orchestrator Python SDK."""
 
+__version__ = "0.3.0"
+
 from .agentic import ContextClient, MCPClient, TeamDelegationClient
 from .async_client import AsyncPlexityClient
 from .automation import ClaudeAutomationClient, IntegrationAutomationClient, IntegrationPlan
