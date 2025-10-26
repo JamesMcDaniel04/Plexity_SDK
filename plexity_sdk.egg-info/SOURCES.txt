@@ -7,6 +7,8 @@ docs/INCREMENTAL_INDEXING.md
 docs/INCREMENTAL_INDEXING_SUMMARY.md
 docs/INSTALL_AND_RUN.md
 docs/PLEXITY_QUICKSTART.md
+docs/RELEASING.md
+docs/SDK_INITIATIVES.md
 docs/SDK_QUICKSTART.md
 docs/incremental-indexing-quickstart.md
 docs/react-components.md
@@ -21,9 +23,15 @@ plexity_sdk/async_client.py
 plexity_sdk/automation.py
 plexity_sdk/client.py
 plexity_sdk/graphrag.py
+plexity_sdk/graphrag_runtime.py
+plexity_sdk/incremental_plugins.py
 plexity_sdk/insights.py
 plexity_sdk/models.py
+plexity_sdk/neo4j.py
+plexity_sdk/orchestration.py
 plexity_sdk/py.typed
+plexity_sdk/security.py
+plexity_sdk/storage.py
 plexity_sdk/types.py
 plexity_sdk/webhooks.py
 plexity_sdk.egg-info/PKG-INFO
@@ -40,6 +48,7 @@ tests/test_async_client.py
 tests/test_automation.py
 tests/test_client_models.py
 tests/test_client_runtime.py
+tests/test_enterprise_features.py
 tests/test_framework_integrations.py
 tests/test_graphrag_client.py
 tests/test_graphrag_runtime.py

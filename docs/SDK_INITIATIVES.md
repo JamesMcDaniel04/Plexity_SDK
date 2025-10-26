@@ -27,3 +27,4 @@ This roadmap focuses on enterprise developer experiences for the Plexity SDK fam
 - Distributed incremental jobs support idempotent execution, status polling, and cancellation via `IncrementalJobSpec` handles.
 - `storage` module adds adapters for S3, GCS, and MinIO plus registry helpers for isolating intermediate state in multi-tenant deployments.
 - Access control, encryption, and compliance workflows ship through `AccessControlPolicy`, `EncryptionContext`, and `ComplianceDirective`.
+- Backend parity checks are enforced at instantiation time: `GraphRAGClient` probes the orchestrator for enterprise and incremental job routes and surfaces actionable errors when the API surface is incomplete.

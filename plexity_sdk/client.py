@@ -979,6 +979,46 @@ class PlexityClient:
             json_payload={},
         )
 
+    # ------------------------------------------------------------------ Capability Probing
+    def probe_endpoint(self, method: str, path: str, *, timeout: Optional[float] = None) -> bool:
+        """Best-effort probe that checks whether an API route exists.
+
+        Returns False when the path is missing (404) or the server rejects the probe
+        with a 5xx response. Authentication failures and validation errors still count
+        as the route being present.
+        """
+
+        if self._closed:
+            raise RuntimeError("cannot probe endpoints after the client has been closed")
+
+        url = self._build_url(path)
+        req_headers: Dict[str, str] = dict(self.default_headers)
+        if self.api_key:
+            req_headers["x-api-key"] = self.api_key
+        if self.token:
+            req_headers["authorization"] = f"Bearer {self.token}"
+
+        try:
+            response = self._session.request(
+                method.upper(),
+                url,
+                headers=req_headers,
+                timeout=timeout or min(self.timeout, 5.0),
+            )
+        except requests.RequestException:
+            return False
+
+        status = response.status_code
+        if status == 404:
+            return False
+        if 500 <= status < 600:
+            return False
+        if status in (200, 201, 202, 204, 400, 401, 403, 405, 422):
+            return True
+        if 100 <= status < 300:
+            return True
+        return True
+
     # GraphRAG operations -------------------------------------------------------
     def search_graphrag(
         self,

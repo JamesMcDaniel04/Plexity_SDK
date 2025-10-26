@@ -42,6 +42,17 @@ __all__ = [
     "ensure_microsoft_graphrag_runtime",
 ]
 
+_BACKEND_FEATURE_ENDPOINTS: Dict[GraphRAGFeature, Tuple[Tuple[str, str], ...]] = {
+    GraphRAGFeature.INCREMENTAL_JOB_ADVISOR: (
+        ("GET", "/graphrag/incremental/jobs/recommendations"),
+        ("POST", "/graphrag/incremental/jobs"),
+        ("POST", "/graphrag/incremental/jobs/slices"),
+    ),
+    GraphRAGFeature.ENTERPRISE_ADDONS: (
+        ("POST", "/graphrag/compliance/directives"),
+    ),
+}
+
 
 @dataclass
 class GraphRAGTelemetryContext:
@@ -129,6 +140,7 @@ class GraphRAGClient:
         scheduler: Optional[IncrementalJobScheduler] = None,
         storage_registry: Optional[StorageAdapterRegistry] = None,
         default_storage_adapter: Optional[str] = None,
+        validate_backend_support: bool = True,
     ) -> None:
         self._client = client
         self._org_id = org_id
@@ -146,6 +158,10 @@ class GraphRAGClient:
             enable=enable_features,
             disable=disable_features,
         )
+        self._validate_backend_support = bool(validate_backend_support)
+        self._feature_capabilities: Dict[GraphRAGFeature, bool] = {}
+        if self._validate_backend_support:
+            self.validate_backend_support(strict=True)
 
     @property
     def context(self) -> Dict[str, Optional[str]]:
@@ -306,6 +322,50 @@ class GraphRAGClient:
             raise RuntimeError(
                 f"Feature '{feature.value}' is not enabled for the current GraphRAG runtime profile"
             )
+        if self._validate_backend_support and feature in _BACKEND_FEATURE_ENDPOINTS:
+            supported = self._feature_capabilities.get(feature)
+            if supported is None:
+                self.validate_backend_support()
+                supported = self._feature_capabilities.get(feature)
+            if supported is False:
+                raise RuntimeError(
+                    f"GraphRAG backend does not expose the required endpoints for feature '{feature.value}'. "
+                    "Disable backend validation or upgrade the orchestrator deployment to use this feature."
+                )
+
+    def validate_backend_support(self, *, strict: bool = False) -> Dict[GraphRAGFeature, bool]:
+        """Probe the orchestrator to confirm feature-dependent routes exist."""
+
+        probe = getattr(self._client, "probe_endpoint", None)
+        if not callable(probe):
+            if strict:
+                raise RuntimeError(
+                    "The underlying client does not support backend capability probing. "
+                    "Pass validate_backend_support=False or upgrade to a newer PlexityClient."
+                )
+            return {}
+
+        capabilities: Dict[GraphRAGFeature, bool] = {}
+        for feature, endpoints in _BACKEND_FEATURE_ENDPOINTS.items():
+            supported = True
+            for method, path in endpoints:
+                if probe("OPTIONS", path):
+                    continue
+                if not probe(method, path):
+                    supported = False
+                    break
+            capabilities[feature] = supported
+            self._feature_capabilities[feature] = supported
+
+        if strict:
+            missing = sorted(
+                feature.value for feature, ok in capabilities.items() if not ok and self.feature_flags.is_enabled(feature)
+            )
+            if missing:
+                raise RuntimeError(
+                    "GraphRAG backend is missing required endpoints for: " + ", ".join(missing)
+                )
+        return capabilities
 
     def _require_scheduler(self) -> IncrementalJobScheduler:
         if self._scheduler is None:

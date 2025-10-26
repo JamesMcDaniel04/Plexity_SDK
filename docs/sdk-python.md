@@ -95,6 +95,7 @@ from plexity_sdk import GraphRAGClient, PlexityClient
 
 client = PlexityClient(base_url="https://api.plexity.ai", api_key="sqk_...")
 rag = GraphRAGClient(client, org_id="org_default", environment="prod")
+rag.validate_backend_support()  # ensures enterprise/incremental routes exist
 
 result = rag.search(
     "What changed in the latest rollout?",
@@ -108,6 +109,7 @@ print(result["answer"])
 - `use_microsoft_cli=True` delegates the query to the Microsoft GraphRAG CLI (optionally pass CLI overrides via `microsoft_cli`).
 - Set `use_microsoft_cli=False` or omit the flag to force the native orchestrator engine.
 - All options accepted by `PlexityClient.search_graphrag` can be forwarded to `GraphRAGClient.search` as keyword arguments.
+- `GraphRAGClient` automatically probes the orchestrator for enterprise and incremental job routes. Call `validate_backend_support()` to inspect capabilities or pass `validate_backend_support=False` when working with mock clients.
 
 Additional helpers:
 
@@ -253,20 +255,32 @@ python -m pytest
 
 ## Publishing to PyPI
 
-1. Bump the version in `pyproject.toml`.
-2. Build the distribution artifacts:
+The SDK ships with automated release workflows. Follow the streamlined path:
+
+1. Update `pyproject.toml` and `plexity_sdk/__init__.py` to the target version.
+2. Run the test suite locally (`pytest`) and build artifacts (`python -m build`) as a sanity check.
+3. Smoke-test the wheel in a clean virtual environment before publishing:
 
    ```bash
-   python -m build
+   python -m venv /tmp/plexity_sdk_release
+   /tmp/plexity_sdk_release/bin/python -m pip install --upgrade pip
+   /tmp/plexity_sdk_release/bin/pip install dist/plexity_sdk-<version>-py3-none-any.whl
+   /tmp/plexity_sdk_release/bin/python - <<'PY'
+   from plexity_sdk import GraphRAGClient, PlexityClient
+   client = PlexityClient(base_url="https://example", api_key="test")
+   rag = GraphRAGClient(client)
+   print(rag.validate_backend_support())
+   PY
    ```
 
-3. Upload the wheel and sdist with Twine:
+   Install optional dependencies (for example `pip install httpx`) in the same environment when the import check requires them.
 
-   ```bash
-   twine upload dist/*
-   ```
+4. Tag the commit with `vX.Y.Z` and push the tag. The GitHub **Release** workflow:
+   - Verifies the tag matches the version.
+   - Rebuilds the sdist/wheel.
+   - Publishes to PyPI using the `PYPI_API_TOKEN` repository secret.
 
-Ensure tests pass before publishing and that API keys / CLI overrides are omitted from version control.
+Detailed instructions live in [`docs/RELEASING.md`](RELEASING.md).
 
 ## Framework Integrations
 

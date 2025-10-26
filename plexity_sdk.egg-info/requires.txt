@@ -1,5 +1,8 @@
 requests>=2.32.0
 
+[argo]
+requests>=2.32.0
+
 [async]
 httpx>=0.27.0
 
@@ -7,10 +10,29 @@ httpx>=0.27.0
 pytest>=8.3.0
 pytest-asyncio>=0.23.0
 
+[enterprise]
+neo4j>=5.16
+boto3>=1.33.0
+google-cloud-storage>=2.16.0
+minio>=7.2.14
+temporalio>=1.4.0
+
 [frameworks]
 langchain-core>=0.2.20
 llama-index>=0.10.50
 haystack-ai>=2.0.0
+
+[gcs]
+google-cloud-storage>=2.16.0
+
+[graphrag-core]
+
+[graphrag-enterprise]
+neo4j>=5.16
+boto3>=1.33.0
+google-cloud-storage>=2.16.0
+minio>=7.2.14
+temporalio>=1.4.0
 
 [haystack]
 haystack-ai>=2.0.0
@@ -20,3 +42,12 @@ langchain-core>=0.2.20
 
 [llamaindex]
 llama-index>=0.10.50
+
+[minio]
+minio>=7.2.14
+
+[s3]
+boto3>=1.33.0
+
+[temporal]
+temporalio>=1.4.0

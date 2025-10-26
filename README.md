@@ -40,6 +40,7 @@ from plexity_sdk import GraphRAGClient, PlexityClient
 
 client = PlexityClient(base_url="https://api.plexity.ai", api_key="sqk_xxx.yyy")
 rag = GraphRAGClient(client, org_id="org_default", environment="prod")
+rag.validate_backend_support()
 
 result = rag.search(
     "Summarise the latest release milestones",
@@ -75,7 +76,7 @@ retriever = create_langchain_retriever(
 docs = retriever.get_relevant_documents("How do I rotate API keys?")
 ```
 
-Install optional integration dependencies with extras such as `pip install plexity-sdk[langchain]`, `pip install plexity-sdk[llamaindex]`, or `pip install plexity-sdk[haystack]`. A `frameworks` extra installs all three.
+Install optional integration dependencies with extras such as `pip install plexity-sdk[langchain]`, `pip install plexity-sdk[llamaindex]`, or `pip install plexity-sdk[haystack]`. A `frameworks` extra installs all three. `GraphRAGClient` automatically probes the orchestrator for enterprise endpoints; pass `validate_backend_support=False` when working with stub clients in tests.
 
 ### Async Transport
 
