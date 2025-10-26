@@ -129,3 +129,9 @@ advisor = client.recommend_neo4j_job_slices(neo4j_manager, limit=5)
 ```
 
 Install `plexity-sdk[graphrag-enterprise]` for Neo4j-powered helpers or use the `enterprise` extra to pull the same dependency bundle.
+
+### Runtime & Ops Enhancements
+
+- Inject Temporal or Argo via `GraphRAGClient.set_scheduler()` to orchestrate long-running incremental jobs with idempotency keys.
+- Offload intermediate state to S3, GCS, or MinIO using the pluggable storage adapters bundled in `plexity_sdk.storage`.
+- Apply tenant-specific access control, encryption, and compliance directives (SOC2/GDPR/CCPA) through `AccessControlPolicy`, `EncryptionContext`, and `ComplianceDirective` helpers.

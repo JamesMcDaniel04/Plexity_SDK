@@ -168,6 +168,81 @@ result = graphrag.apply_neo4j_schema_migration(
 - Surface incremental job slices from the orchestrator or directly from Neo4j using `recommend_incremental_job_slices` and `recommend_neo4j_job_slices`.
 - Wire ETL pipelines into GraphRAG incremental ingestion with `register_incremental_ingestion_plugin` and `GraphRAGClient.ingest_with_plugin`.
 
+### Distributed Incremental Jobs
+
+- Inject an orchestration backend (Temporal, Argo Workflows, or in-memory) via `GraphRAGClient.set_scheduler()`.
+- Schedule long-running incremental updates with idempotency keys for exactly-once semantics:
+
+```python
+from plexity_sdk import GraphRAGClient, TemporalJobScheduler
+
+scheduler = TemporalJobScheduler(
+    target_host="tempo.example.com:7233",
+    namespace="plexity",
+    task_queue="graphrag-incremental",
+)
+
+graphrag.set_scheduler(scheduler)
+handle = graphrag.schedule_incremental_job(
+    "IncrementalIndexer",
+    {"slice": {"label": "Customer", "org_id": "org_default"}},
+    idempotency_key="customer-org_default-2024-07-01",
+)
+status = graphrag.get_scheduled_job_status(handle)
+```
+
+Use the async variants (`schedule_incremental_job_async`, `get_scheduled_job_status_async`) when running inside an event loop.
+
+### Storage Offloading & Pluggable Compute
+
+- Register storage adapters for S3, GCS, MinIO, or custom endpoints so intermediate state can land close to your compute cluster:
+
+```python
+from plexity_sdk import S3StorageAdapter
+
+graphrag.register_storage_adapter(
+    "s3",
+    S3StorageAdapter(bucket="plexity-graphrag-intermediate"),
+)
+graphrag.set_default_storage_adapter("s3")
+stored = graphrag.offload_intermediate_state("jobs/2024-07-01/customer.json", "{}")
+```
+
+- Retrieve or delete persisted slices with `retrieve_intermediate_state` / `delete_intermediate_state` to support distributed workers.
+- Combine storage offload with multi-graph contexts by configuring `graph_id` / `shard_id` when instantiating `GraphRAGClient`.
+
+### Security & Compliance
+
+- Attach access policies and encryption contexts so every API call carries tenant isolation metadata:
+
+```python
+from plexity_sdk import AccessControlPolicy, EncryptionContext
+
+graphrag.update_context(
+    access_policy=AccessControlPolicy(
+        tenant_id="org_default",
+        roles={"reader": True, "maintainer": True},
+        scopes={"environment": "prod"},
+    ),
+    encryption=EncryptionContext(encrypt_in_transit=True, encrypt_at_rest=True, kms_alias="alias/plexity/graphrag"),
+)
+```
+
+- Execute GDPR/CCPA/SOC2 directives programmatically using `ComplianceDirective`:
+
+```python
+from plexity_sdk import ComplianceDirective, ComplianceDirectiveType
+
+directive = ComplianceDirective(
+    directive=ComplianceDirectiveType.DELETE_NODE,
+    payload={"nodeId": "customer:123"},
+    reason="Customer account deletion",
+)
+graphrag.apply_compliance_directive(directive)
+```
+
+- Reference platform-managed secrets inside ingestion plugins with `SecretReference` to avoid leaking credentials into pipelines.
+
 ## Running Tests
 
 Unit tests for the Python SDK live under `tests`. Execute them with:

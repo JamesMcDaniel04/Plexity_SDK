@@ -21,3 +21,9 @@ This roadmap focuses on enterprise developer experiences for the Plexity SDK fam
 - Publish sample pipelines that combine the SDK with the Neo4j Async Java driver and Apache Kafka connectors.
 - Create reference architectures illustrating ingestion from SharePoint, Salesforce, and SAP with incremental updates.
 - Expand troubleshooting guides to cover enterprise deployment patterns and Neo4j-specific tuning.
+
+## Architecture Enhancements (Runtime & Ops)
+- `orchestration` module provides pluggable schedulers (`InMemoryJobScheduler`, `TemporalJobScheduler`, `ArgoWorkflowsScheduler`) with sync/async entry points.
+- Distributed incremental jobs support idempotent execution, status polling, and cancellation via `IncrementalJobSpec` handles.
+- `storage` module adds adapters for S3, GCS, and MinIO plus registry helpers for isolating intermediate state in multi-tenant deployments.
+- Access control, encryption, and compliance workflows ship through `AccessControlPolicy`, `EncryptionContext`, and `ComplianceDirective`.

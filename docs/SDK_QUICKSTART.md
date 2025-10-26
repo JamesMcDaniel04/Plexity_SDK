@@ -24,8 +24,16 @@ Get up and running with the Plexity Agentic Orchestrator and GraphRAG tooling fr
 | Haystack helper | `pip install plexity-sdk[haystack]` | Supports haystack-ai or farm-haystack |
 | All integrations | `pip install plexity-sdk[frameworks]` | Installs every optional framework |
 | Async client | `pip install plexity-sdk[async]` | Installs `httpx` for async transport |
+| GraphRAG core | `pip install plexity-sdk[graphrag-core]` | Feature flag scaffolding without extra deps |
+| GraphRAG enterprise | `pip install plexity-sdk[graphrag-enterprise]` | Neo4j + storage + scheduler integrations |
+| Enterprise bundle | `pip install plexity-sdk[enterprise]` | Superset of GraphRAG enterprise extras |
+| S3 adapter | `pip install plexity-sdk[s3]` | Adds `boto3` for S3-compatible object storage |
+| GCS adapter | `pip install plexity-sdk[gcs]` | Adds `google-cloud-storage` for GCS buckets |
+| MinIO adapter | `pip install plexity-sdk[minio]` | Adds `minio` SDK for on-prem installations |
+| Temporal scheduler | `pip install plexity-sdk[temporal]` | Adds `temporalio` async client |
+| Argo workflows | `pip install plexity-sdk[argo]` | Uses `requests` to submit workflows via REST |
 
-All extras are additive, so you can install multiple at once: `pip install plexity-sdk[frameworks,async]`.
+All extras are additive, so you can install multiple at once: `pip install plexity-sdk[enterprise,temporal]`.
 
 ---
 

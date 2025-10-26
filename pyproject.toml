@@ -48,9 +48,32 @@ async = [
 graphrag-core = []
 graphrag-enterprise = [
   "neo4j>=5.16",
+  "boto3>=1.33.0",
+  "google-cloud-storage>=2.16.0",
+  "minio>=7.2.14",
+  "temporalio>=1.4.0",
 ]
 enterprise = [
   "neo4j>=5.16",
+  "boto3>=1.33.0",
+  "google-cloud-storage>=2.16.0",
+  "minio>=7.2.14",
+  "temporalio>=1.4.0",
+]
+s3 = [
+  "boto3>=1.33.0",
+]
+gcs = [
+  "google-cloud-storage>=2.16.0",
+]
+minio = [
+  "minio>=7.2.14",
+]
+temporal = [
+  "temporalio>=1.4.0",
+]
+argo = [
+  "requests>=2.32.0",
 ]
 
 [project.urls]

@@ -4,6 +4,7 @@ import os
 import shutil
 import subprocess
 import sys
+import asyncio
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
@@ -26,6 +27,14 @@ from .neo4j import (
     Neo4jSchemaSnapshot,
     Neo4jTransactionalBatchExecutor,
 )
+from .orchestration import (
+    IncrementalJobHandle,
+    IncrementalJobScheduler,
+    IncrementalJobSpec,
+    IncrementalJobStatus,
+)
+from .security import AccessControlPolicy, ComplianceDirective, EncryptionContext
+from .storage import StorageAdapter, StorageAdapterRegistry, StorageObject
 
 __all__ = [
     "GraphRAGClient",
@@ -113,11 +122,25 @@ class GraphRAGClient:
         package: GraphRAGPackage | str = GraphRAGPackage.CORE,
         enable_features: Optional[Iterable[GraphRAGFeature | str]] = None,
         disable_features: Optional[Iterable[GraphRAGFeature | str]] = None,
+        graph_id: Optional[str] = None,
+        shard_id: Optional[str] = None,
+        access_policy: Optional[AccessControlPolicy] = None,
+        encryption: Optional[EncryptionContext] = None,
+        scheduler: Optional[IncrementalJobScheduler] = None,
+        storage_registry: Optional[StorageAdapterRegistry] = None,
+        default_storage_adapter: Optional[str] = None,
     ) -> None:
         self._client = client
         self._org_id = org_id
         self._environment = environment
         self._team_id = team_id
+        self._graph_id = graph_id
+        self._shard_id = shard_id
+        self._access_policy = access_policy
+        self._encryption_context = encryption
+        self._scheduler = scheduler
+        self._storage_registry = storage_registry or StorageAdapterRegistry()
+        self._default_storage_adapter = default_storage_adapter
         self._runtime_profile = runtime_profile or resolve_runtime_profile(
             package,
             enable=enable_features,
@@ -130,6 +153,8 @@ class GraphRAGClient:
             "org_id": self._org_id,
             "environment": self._environment,
             "team_id": self._team_id,
+            "graph_id": self._graph_id,
+            "shard_id": self._shard_id,
         }
 
     @property
@@ -144,12 +169,58 @@ class GraphRAGClient:
     def optional_dependencies(self) -> Tuple[str, ...]:
         return tuple(sorted(self._runtime_profile.optional_dependencies))
 
+    @property
+    def access_policy(self) -> Optional[AccessControlPolicy]:
+        return self._access_policy
+
+    @property
+    def encryption_context(self) -> Optional[EncryptionContext]:
+        return self._encryption_context
+
+    @property
+    def scheduler(self) -> Optional[IncrementalJobScheduler]:
+        return self._scheduler
+
+    @property
+    def storage_registry(self) -> StorageAdapterRegistry:
+        return self._storage_registry
+
+    @property
+    def default_storage_adapter(self) -> Optional[str]:
+        return self._default_storage_adapter
+
+    def set_scheduler(self, scheduler: IncrementalJobScheduler) -> None:
+        self._scheduler = scheduler
+
+    def set_access_policy(self, policy: Optional[AccessControlPolicy]) -> None:
+        self._access_policy = policy
+
+    def set_encryption_context(self, context: Optional[EncryptionContext]) -> None:
+        self._encryption_context = context
+
+    def set_default_storage_adapter(self, name: Optional[str]) -> None:
+        self._default_storage_adapter = name
+
+    def register_storage_adapter(self, name: str, adapter: StorageAdapter, *, override: bool = False) -> None:
+        self._storage_registry.register(name, adapter, override=override)
+
+    def get_storage_adapter(self, name: Optional[str] = None) -> StorageAdapter:
+        target = name or self._default_storage_adapter
+        if not target:
+            raise RuntimeError("No storage adapter configured")
+        return self._storage_registry.get(target)
+
     def update_context(
         self,
         *,
         org_id: Optional[str] = None,
         environment: Optional[str] = None,
         team_id: Optional[str] = None,
+        graph_id: Optional[str] = None,
+        shard_id: Optional[str] = None,
+        access_policy: Optional[AccessControlPolicy] = None,
+        encryption: Optional[EncryptionContext] = None,
+        default_storage_adapter: Optional[str] = None,
     ) -> None:
         if org_id is not None:
             self._org_id = org_id
@@ -157,6 +228,16 @@ class GraphRAGClient:
             self._environment = environment
         if team_id is not None:
             self._team_id = team_id
+        if graph_id is not None:
+            self._graph_id = graph_id
+        if shard_id is not None:
+            self._shard_id = shard_id
+        if access_policy is not None:
+            self._access_policy = access_policy
+        if encryption is not None:
+            self._encryption_context = encryption
+        if default_storage_adapter is not None:
+            self._default_storage_adapter = default_storage_adapter
 
     def search(self, query: str, **options: Any) -> Any:
         merged = self._merge_context(options)
@@ -190,13 +271,55 @@ class GraphRAGClient:
             merged["environment"] = self._environment
         if self._team_id is not None and "team_id" not in merged:
             merged["team_id"] = self._team_id
+        if self._graph_id and "graph_id" not in merged:
+            merged["graph_id"] = self._graph_id
+        if self._shard_id and "shard_id" not in merged:
+            merged["shard_id"] = self._shard_id
+        if self._access_policy and "access_policy" not in merged:
+            merged["access_policy"] = self._access_policy.to_dict()
+        if self._encryption_context and "encryption" not in merged:
+            merged["encryption"] = self._encryption_context.to_dict()
         return merged
+
+    def offload_intermediate_state(
+        self,
+        key: str,
+        data: Any,
+        *,
+        adapter: Optional[str] = None,
+        metadata: Optional[Dict[str, str]] = None,
+    ) -> StorageObject:
+        payload = data if isinstance(data, bytes) else str(data).encode("utf-8")
+        storage_adapter = self.get_storage_adapter(adapter)
+        return storage_adapter.put_object(key, payload, metadata=metadata)
+
+    def retrieve_intermediate_state(self, key: str, *, adapter: Optional[str] = None) -> StorageObject:
+        storage_adapter = self.get_storage_adapter(adapter)
+        return storage_adapter.get_object(key)
+
+    def delete_intermediate_state(self, key: str, *, adapter: Optional[str] = None) -> None:
+        storage_adapter = self.get_storage_adapter(adapter)
+        storage_adapter.delete_object(key)
 
     def _require_feature(self, feature: GraphRAGFeature) -> None:
         if not self.feature_flags.is_enabled(feature):
             raise RuntimeError(
                 f"Feature '{feature.value}' is not enabled for the current GraphRAG runtime profile"
             )
+
+    def _require_scheduler(self) -> IncrementalJobScheduler:
+        if self._scheduler is None:
+            raise RuntimeError("No incremental job scheduler configured")
+        return self._scheduler
+
+    def _run_blocking(self, coro: Any):
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(coro)
+        raise RuntimeError(
+            "An event loop is already running. Call the async variant (e.g., schedule_incremental_job_async)."
+        )
 
     # ------------------------------------------------------------------ Incremental Jobs
     def recommend_incremental_job_slices(
@@ -219,19 +342,93 @@ class GraphRAGClient:
         merged = self._merge_context(payload)
         return self._client.recommend_graphrag_job_slices(**merged)
 
-    def create_incremental_job(self, payload: Dict[str, Any]) -> Any:
+    def schedule_incremental_job(
+        self,
+        job_type: str,
+        payload: Dict[str, Any],
+        *,
+        idempotency_key: Optional[str] = None,
+        tags: Optional[Dict[str, str]] = None,
+    ) -> IncrementalJobHandle:
+        self._require_feature(GraphRAGFeature.INCREMENTAL_JOB_ADVISOR)
+        scheduler = self._require_scheduler()
+        spec = IncrementalJobSpec(
+            job_type=job_type,
+            payload=self._merge_context(dict(payload)),
+            idempotency_key=idempotency_key,
+            tags={str(k): str(v) for k, v in (tags or {}).items()},
+        )
+        return self._run_blocking(scheduler.schedule(spec))
+
+    async def schedule_incremental_job_async(
+        self,
+        job_type: str,
+        payload: Dict[str, Any],
+        *,
+        idempotency_key: Optional[str] = None,
+        tags: Optional[Dict[str, str]] = None,
+    ) -> IncrementalJobHandle:
+        self._require_feature(GraphRAGFeature.INCREMENTAL_JOB_ADVISOR)
+        scheduler = self._require_scheduler()
+        spec = IncrementalJobSpec(
+            job_type=job_type,
+            payload=self._merge_context(dict(payload)),
+            idempotency_key=idempotency_key,
+            tags={str(k): str(v) for k, v in (tags or {}).items()},
+        )
+        return await scheduler.schedule(spec)
+
+    def get_scheduled_job_status(self, handle: IncrementalJobHandle) -> IncrementalJobStatus:
+        scheduler = self._require_scheduler()
+        return self._run_blocking(scheduler.get_status(handle))
+
+    async def get_scheduled_job_status_async(self, handle: IncrementalJobHandle) -> IncrementalJobStatus:
+        scheduler = self._require_scheduler()
+        return await scheduler.get_status(handle)
+
+    def cancel_scheduled_job(self, handle: IncrementalJobHandle) -> None:
+        scheduler = self._require_scheduler()
+        self._run_blocking(scheduler.cancel(handle))
+
+    async def cancel_scheduled_job_async(self, handle: IncrementalJobHandle) -> None:
+        scheduler = self._require_scheduler()
+        await scheduler.cancel(handle)
+
+    def create_incremental_job(
+        self,
+        payload: Dict[str, Any],
+        *,
+        idempotency_key: Optional[str] = None,
+        job_labels: Optional[Iterable[str]] = None,
+    ) -> Any:
         """Create a new incremental job with orchestrator-managed batching."""
 
         self._require_feature(GraphRAGFeature.INCREMENTAL_JOB_ADVISOR)
         merged = self._merge_context(dict(payload))
+        if idempotency_key is not None:
+            merged["idempotency_key"] = idempotency_key
+        if job_labels is not None:
+            merged["job_labels"] = list(job_labels)
         return self._client.create_graphrag_incremental_job(**merged)
 
-    def trigger_incremental_job_slice(self, slice_payload: Dict[str, Any]) -> Any:
+    def trigger_incremental_job_slice(
+        self,
+        slice_payload: Dict[str, Any],
+        *,
+        idempotency_key: Optional[str] = None,
+    ) -> Any:
         """Trigger a specific incremental job slice."""
 
         self._require_feature(GraphRAGFeature.INCREMENTAL_JOB_ADVISOR)
         merged = self._merge_context(dict(slice_payload))
+        if idempotency_key is not None:
+            merged["idempotency_key"] = idempotency_key
         return self._client.trigger_graphrag_incremental_job_slice(**merged)
+
+    def apply_compliance_directive(self, directive: ComplianceDirective) -> Any:
+        self._require_feature(GraphRAGFeature.ENTERPRISE_ADDONS)
+        merged = self._merge_context({})
+        return self._client.apply_graphrag_compliance_directive(directive=directive.to_dict(), **merged)
 
     # ------------------------------------------------------------------ Neo4j helpers
     def create_neo4j_driver_manager(self, config: Neo4jConnectionConfig) -> Neo4jDriverManager:

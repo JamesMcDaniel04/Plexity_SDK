@@ -19,6 +19,16 @@ from .graphrag_runtime import (
     GraphRAGRuntimeProfile,
     resolve_runtime_profile,
 )
+from .orchestration import (
+    ArgoWorkflowsScheduler,
+    IncrementalJobHandle,
+    IncrementalJobScheduler,
+    IncrementalJobSpec,
+    IncrementalJobStatus,
+    InMemoryJobScheduler,
+    JobState,
+    TemporalJobScheduler,
+)
 from .neo4j import (
     JobSliceRecommendation,
     Neo4jConnectionConfig,
@@ -46,6 +56,21 @@ from .incremental_plugins import (
     list_incremental_ingestion_plugins,
     register_incremental_ingestion_plugin,
 )
+from .security import (
+    AccessControlPolicy,
+    ComplianceDirective,
+    ComplianceDirectiveType,
+    EncryptionContext,
+    SecretReference,
+)
+from .storage import (
+    GCSStorageAdapter,
+    MinIOStorageAdapter,
+    S3StorageAdapter,
+    StorageAdapter,
+    StorageAdapterRegistry,
+    StorageObject,
+)
 
 __all__ = [
     "PlexityClient",
@@ -71,6 +96,14 @@ __all__ = [
     "GraphRAGPackage",
     "GraphRAGRuntimeProfile",
     "resolve_runtime_profile",
+    "JobState",
+    "IncrementalJobSpec",
+    "IncrementalJobHandle",
+    "IncrementalJobStatus",
+    "IncrementalJobScheduler",
+    "InMemoryJobScheduler",
+    "TemporalJobScheduler",
+    "ArgoWorkflowsScheduler",
     "Neo4jConnectionConfig",
     "Neo4jDriverManager",
     "Neo4jSchemaPlanner",
@@ -81,6 +114,17 @@ __all__ = [
     "Neo4jTransactionalBatchExecutor",
     "Neo4jIncrementalJobAdvisor",
     "JobSliceRecommendation",
+    "AccessControlPolicy",
+    "EncryptionContext",
+    "ComplianceDirectiveType",
+    "ComplianceDirective",
+    "SecretReference",
+    "StorageAdapter",
+    "StorageObject",
+    "StorageAdapterRegistry",
+    "S3StorageAdapter",
+    "GCSStorageAdapter",
+    "MinIOStorageAdapter",
     "IncrementalIngestionPlugin",
     "register_incremental_ingestion_plugin",
     "get_incremental_ingestion_plugin",

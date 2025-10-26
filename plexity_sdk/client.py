@@ -1204,6 +1204,35 @@ class PlexityClient:
         body = {key: value for key, value in payload.items() if value is not None}
         return self._request("POST", "/graphrag/incremental/jobs/slices", json_payload=body)
 
+    def apply_graphrag_compliance_directive(
+        self,
+        *,
+        directive: Dict[str, Any],
+        org_id: Optional[str] = None,
+        team_id: Optional[str] = None,
+        environment: Optional[str] = None,
+        graph_id: Optional[str] = None,
+        shard_id: Optional[str] = None,
+        access_policy: Optional[Dict[str, Any]] = None,
+        encryption: Optional[Dict[str, Any]] = None,
+    ) -> JSONValue:
+        payload: Dict[str, Any] = {"directive": directive}
+        if org_id is not None:
+            payload["org_id"] = org_id
+        if team_id is not None:
+            payload["team_id"] = team_id
+        if environment is not None:
+            payload["environment"] = environment
+        if graph_id is not None:
+            payload["graph_id"] = graph_id
+        if shard_id is not None:
+            payload["shard_id"] = shard_id
+        if access_policy is not None:
+            payload["access_policy"] = access_policy
+        if encryption is not None:
+            payload["encryption"] = encryption
+        return self._request("POST", "/graphrag/compliance/directives", json_payload=payload)
+
     # Executions ----------------------------------------------------------------
     def list_executions(
         self,
