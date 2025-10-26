@@ -12,6 +12,25 @@ from .webhooks import (
     verify_webhook_signature,
 )
 from .graphrag import GraphRAGClient, GraphRAGTelemetry, ensure_microsoft_graphrag_runtime
+from .graphrag_runtime import (
+    GraphRAGFeature,
+    GraphRAGFeatureFlags,
+    GraphRAGPackage,
+    GraphRAGRuntimeProfile,
+    resolve_runtime_profile,
+)
+from .neo4j import (
+    JobSliceRecommendation,
+    Neo4jConnectionConfig,
+    Neo4jDriverManager,
+    Neo4jIncrementalJobAdvisor,
+    Neo4jMigrationAction,
+    Neo4jMigrationPlan,
+    Neo4jMigrationResult,
+    Neo4jSchemaPlanner,
+    Neo4jSchemaSnapshot,
+    Neo4jTransactionalBatchExecutor,
+)
 from .frameworks import (
     create_langchain_retriever,
     LangChainRetrieverOptions,
@@ -19,6 +38,13 @@ from .frameworks import (
     LlamaIndexRetrieverOptions,
     create_haystack_retriever,
     HaystackRetrieverOptions,
+)
+from .incremental_plugins import (
+    IncrementalIngestionPlugin,
+    get_incremental_ingestion_plugin,
+    invoke_incremental_ingestion_plugin,
+    list_incremental_ingestion_plugins,
+    register_incremental_ingestion_plugin,
 )
 
 __all__ = [
@@ -40,6 +66,26 @@ __all__ = [
     "GraphRAGClient",
     "GraphRAGTelemetry",
     "ensure_microsoft_graphrag_runtime",
+    "GraphRAGFeature",
+    "GraphRAGFeatureFlags",
+    "GraphRAGPackage",
+    "GraphRAGRuntimeProfile",
+    "resolve_runtime_profile",
+    "Neo4jConnectionConfig",
+    "Neo4jDriverManager",
+    "Neo4jSchemaPlanner",
+    "Neo4jSchemaSnapshot",
+    "Neo4jMigrationPlan",
+    "Neo4jMigrationAction",
+    "Neo4jMigrationResult",
+    "Neo4jTransactionalBatchExecutor",
+    "Neo4jIncrementalJobAdvisor",
+    "JobSliceRecommendation",
+    "IncrementalIngestionPlugin",
+    "register_incremental_ingestion_plugin",
+    "get_incremental_ingestion_plugin",
+    "list_incremental_ingestion_plugins",
+    "invoke_incremental_ingestion_plugin",
     "create_langchain_retriever",
     "LangChainRetrieverOptions",
     "create_llamaindex_retriever",

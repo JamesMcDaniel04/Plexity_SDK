@@ -134,6 +134,40 @@ client.get_graphrag_communities(limit=10, environment="staging")
 
 All methods accept optional `config_overrides` which are merged into the request payload without mutating the original object.
 
+### Enterprise GraphRAG Extensions
+
+- Select runtime packages explicitly via `GraphRAGClient(..., package="core"|"enterprise")` and toggle granular feature flags with `enable_features` / `disable_features`.
+- Install `plexity-sdk[graphrag-enterprise]` to pull the Neo4j driver required for schema diff tooling and on-box recommendations.
+- Use the Neo4j helpers to snapshot schemas, plan migrations, and execute transactional batches:
+
+```python
+from plexity_sdk import (
+    GraphRAGClient,
+    GraphRAGPackage,
+    Neo4jConnectionConfig,
+)
+
+graphrag = GraphRAGClient(client, package=GraphRAGPackage.ENTERPRISE)
+driver_manager = graphrag.create_neo4j_driver_manager(
+    Neo4jConnectionConfig(
+        uri="neo4j+s://demo.databases.neo4j.io",
+        username="neo4j",
+        password="secret",
+    )
+)
+planner = graphrag.create_neo4j_schema_planner(driver_manager)
+snapshot = graphrag.snapshot_neo4j_schema(planner)
+plan = graphrag.plan_neo4j_schema_migration(planner, snapshot)
+result = graphrag.apply_neo4j_schema_migration(
+    graphrag.create_neo4j_batch_executor(driver_manager),
+    plan,
+    dry_run=True,
+)
+```
+
+- Surface incremental job slices from the orchestrator or directly from Neo4j using `recommend_incremental_job_slices` and `recommend_neo4j_job_slices`.
+- Wire ETL pipelines into GraphRAG incremental ingestion with `register_incremental_ingestion_plugin` and `GraphRAGClient.ingest_with_plugin`.
+
 ## Running Tests
 
 Unit tests for the Python SDK live under `tests`. Execute them with:

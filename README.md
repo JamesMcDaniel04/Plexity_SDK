@@ -96,3 +96,36 @@ asyncio.run(main())
 ### Developer Layer Roadmap
 
 Track the upcoming SDK and GraphRAG developer initiatives in [`docs/SDK_INITIATIVES.md`](docs/SDK_INITIATIVES.md). The plan covers the package split, Neo4j-first APIs, language wrappers, and enterprise reference architectures.
+
+### GraphRAG Runtime Packages
+
+`GraphRAGClient` now understands runtime packages so you can opt into enterprise capabilities explicitly:
+
+```python
+from plexity_sdk import (
+    GraphRAGClient,
+    GraphRAGPackage,
+    Neo4jConnectionConfig,
+    PlexityClient,
+)
+
+plexity_client = PlexityClient(base_url="https://api.plexity.ai", api_key="sqk_xxx.yyy")
+client = GraphRAGClient(
+    plexity_client,
+    package=GraphRAGPackage.ENTERPRISE,
+    org_id="org_default",
+    enable_features=["schema_diff"],
+)
+
+neo4j_manager = client.create_neo4j_driver_manager(
+    Neo4jConnectionConfig(
+        uri="neo4j+s://demo.databases.neo4j.io",
+        username="neo4j",
+        password="secret",
+        database="neo4j",
+    )
+)
+advisor = client.recommend_neo4j_job_slices(neo4j_manager, limit=5)
+```
+
+Install `plexity-sdk[graphrag-enterprise]` for Neo4j-powered helpers or use the `enterprise` extra to pull the same dependency bundle.

@@ -45,6 +45,13 @@ frameworks = [
 async = [
   "httpx>=0.27.0",
 ]
+graphrag-core = []
+graphrag-enterprise = [
+  "neo4j>=5.16",
+]
+enterprise = [
+  "neo4j>=5.16",
+]
 
 [project.urls]
 Homepage = "https://github.com/plexity/agentic-rag-orchestrator"

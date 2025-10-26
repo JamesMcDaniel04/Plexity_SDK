@@ -6,14 +6,31 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 
 from .client import PlexityClient
+from .graphrag_runtime import (
+    GraphRAGFeature,
+    GraphRAGFeatureFlags,
+    GraphRAGPackage,
+    GraphRAGRuntimeProfile,
+    resolve_runtime_profile,
+)
+from .neo4j import (
+    JobSliceRecommendation,
+    Neo4jConnectionConfig,
+    Neo4jDriverManager,
+    Neo4jIncrementalJobAdvisor,
+    Neo4jMigrationPlan,
+    Neo4jSchemaPlanner,
+    Neo4jSchemaSnapshot,
+    Neo4jTransactionalBatchExecutor,
+)
 
 __all__ = [
     "GraphRAGClient",
     "GraphRAGTelemetry",
-    "ensure_microsoft_graphrag_runtime"
+    "ensure_microsoft_graphrag_runtime",
 ]
 
 
@@ -92,11 +109,20 @@ class GraphRAGClient:
         org_id: Optional[str] = None,
         environment: str = "prod",
         team_id: Optional[str] = None,
+        runtime_profile: Optional[GraphRAGRuntimeProfile] = None,
+        package: GraphRAGPackage | str = GraphRAGPackage.CORE,
+        enable_features: Optional[Iterable[GraphRAGFeature | str]] = None,
+        disable_features: Optional[Iterable[GraphRAGFeature | str]] = None,
     ) -> None:
         self._client = client
         self._org_id = org_id
         self._environment = environment
         self._team_id = team_id
+        self._runtime_profile = runtime_profile or resolve_runtime_profile(
+            package,
+            enable=enable_features,
+            disable=disable_features,
+        )
 
     @property
     def context(self) -> Dict[str, Optional[str]]:
@@ -105,6 +131,18 @@ class GraphRAGClient:
             "environment": self._environment,
             "team_id": self._team_id,
         }
+
+    @property
+    def runtime_profile(self) -> GraphRAGRuntimeProfile:
+        return self._runtime_profile
+
+    @property
+    def feature_flags(self) -> GraphRAGFeatureFlags:
+        return self._runtime_profile.feature_flags
+
+    @property
+    def optional_dependencies(self) -> Tuple[str, ...]:
+        return tuple(sorted(self._runtime_profile.optional_dependencies))
 
     def update_context(
         self,
@@ -153,6 +191,109 @@ class GraphRAGClient:
         if self._team_id is not None and "team_id" not in merged:
             merged["team_id"] = self._team_id
         return merged
+
+    def _require_feature(self, feature: GraphRAGFeature) -> None:
+        if not self.feature_flags.is_enabled(feature):
+            raise RuntimeError(
+                f"Feature '{feature.value}' is not enabled for the current GraphRAG runtime profile"
+            )
+
+    # ------------------------------------------------------------------ Incremental Jobs
+    def recommend_incremental_job_slices(
+        self,
+        *,
+        labels: Optional[Iterable[str]] = None,
+        org_id: Optional[str] = None,
+        limit: Optional[int] = None,
+    ) -> Any:
+        """Return incremental job slice recommendations from the orchestrator."""
+
+        self._require_feature(GraphRAGFeature.INCREMENTAL_JOB_ADVISOR)
+        payload: Dict[str, Any] = {}
+        if labels is not None:
+            payload["labels"] = list(labels)
+        if org_id is not None:
+            payload["org_id"] = org_id
+        if limit is not None:
+            payload["limit"] = int(limit)
+        merged = self._merge_context(payload)
+        return self._client.recommend_graphrag_job_slices(**merged)
+
+    def create_incremental_job(self, payload: Dict[str, Any]) -> Any:
+        """Create a new incremental job with orchestrator-managed batching."""
+
+        self._require_feature(GraphRAGFeature.INCREMENTAL_JOB_ADVISOR)
+        merged = self._merge_context(dict(payload))
+        return self._client.create_graphrag_incremental_job(**merged)
+
+    def trigger_incremental_job_slice(self, slice_payload: Dict[str, Any]) -> Any:
+        """Trigger a specific incremental job slice."""
+
+        self._require_feature(GraphRAGFeature.INCREMENTAL_JOB_ADVISOR)
+        merged = self._merge_context(dict(slice_payload))
+        return self._client.trigger_graphrag_incremental_job_slice(**merged)
+
+    # ------------------------------------------------------------------ Neo4j helpers
+    def create_neo4j_driver_manager(self, config: Neo4jConnectionConfig) -> Neo4jDriverManager:
+        self._require_feature(GraphRAGFeature.NEO4J_SUPPORT)
+        return Neo4jDriverManager(config)
+
+    def create_neo4j_schema_planner(self, manager: Neo4jDriverManager) -> Neo4jSchemaPlanner:
+        self._require_feature(GraphRAGFeature.SCHEMA_DIFF)
+        return Neo4jSchemaPlanner(manager)
+
+    def create_neo4j_batch_executor(
+        self,
+        manager: Neo4jDriverManager,
+        *,
+        batch_size: int = 50,
+    ) -> Neo4jTransactionalBatchExecutor:
+        self._require_feature(GraphRAGFeature.SCHEMA_DIFF)
+        return Neo4jTransactionalBatchExecutor(manager, batch_size=batch_size)
+
+    def recommend_neo4j_job_slices(
+        self,
+        manager: Neo4jDriverManager,
+        *,
+        labels: Optional[Iterable[str]] = None,
+        limit: int = 25,
+    ) -> List[JobSliceRecommendation]:
+        self._require_feature(GraphRAGFeature.NEO4J_SUPPORT)
+        advisor = Neo4jIncrementalJobAdvisor(manager)
+        return advisor.recommend(labels=list(labels) if labels else None, limit=limit)
+
+    def snapshot_neo4j_schema(self, planner: Neo4jSchemaPlanner) -> Neo4jSchemaSnapshot:
+        self._require_feature(GraphRAGFeature.SCHEMA_DIFF)
+        return planner.snapshot()
+
+    def plan_neo4j_schema_migration(
+        self,
+        planner: Neo4jSchemaPlanner,
+        target: Neo4jSchemaSnapshot,
+        *,
+        current: Optional[Neo4jSchemaSnapshot] = None,
+    ) -> Neo4jMigrationPlan:
+        self._require_feature(GraphRAGFeature.SCHEMA_DIFF)
+        return planner.plan_migration(target, current=current)
+
+    def apply_neo4j_schema_migration(
+        self,
+        executor: Neo4jTransactionalBatchExecutor,
+        plan: Neo4jMigrationPlan,
+        *,
+        dry_run: bool = False,
+    ) -> Any:
+        self._require_feature(GraphRAGFeature.SCHEMA_DIFF)
+        return executor.run_plan(plan, dry_run=dry_run)
+
+    # ------------------------------------------------------------------ Plugin Entry Point
+    def ingest_with_plugin(self, plugin_name: str, slice_payload: Dict[str, Any]) -> Any:
+        """Invoke an incremental ingestion plugin."""
+
+        self._require_feature(GraphRAGFeature.PLUGIN_ENTRYPOINTS)
+        from .incremental_plugins import invoke_incremental_ingestion_plugin
+
+        return invoke_incremental_ingestion_plugin(plugin_name, self, slice_payload)
 
 
 def ensure_microsoft_graphrag_runtime(

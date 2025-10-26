@@ -3,19 +3,19 @@
 This roadmap focuses on enterprise developer experiences for the Plexity SDK family and related GraphRAG tooling.
 
 ## Package Split & Versioning
-- Split `@plexity/graphrag` into a slim core runtime and an enterprise add-on bundle.
-- Introduce feature flags so Neo4j customers can install only the extensions they require.
-- Publish clear semantic versioning guidance and upgrade notes covering both package tracks.
+- Split `GraphRAGClient` runtime profiles via `plexity_sdk.graphrag_runtime.GraphRAGPackage`.
+- Feature flags surface through `enable_features` / `disable_features` and expose optional dependencies via extras (`graphrag-core`, `graphrag-enterprise`).
+- Track version milestones and release notes per package channel.
 
 ## Neo4j-First APIs
-- Ship direct driver helpers tuned for Neo4j Aura and Bolt routing with built-in connection pooling and transactional batching.
-- Provide schema diff tooling to snapshot the current graph schema, plan migrations, and push changes via the CLI / SDK.
-- Add incremental job APIs that recommend job slices (e.g., by label, by organization) for safe, staged reprocessing.
+- `Neo4jDriverManager` centralizes Aura/Bolt routing with pooling and connectivity checks.
+- `Neo4jSchemaPlanner` + `Neo4jTransactionalBatchExecutor` deliver snapshotting, diffing, and migration execution.
+- Incremental job APIs (`recommend_incremental_job_slices`, `trigger_incremental_job_slice`, and `Neo4jIncrementalJobAdvisor`) expose safe batch orchestration.
 
 ## Language Coverage
 - Maintain the TypeScript SDK as the canonical implementation with first-class docs and samples.
 - Release lightweight Go and Java wrappers aligned with common enterprise stacks.
-- Offer a plugin entry point so existing ETL processes can call incremental ingestion without rewriting pipelines.
+- Offer a plugin entry point so existing ETL processes can call incremental ingestion without rewriting pipelines (`register_incremental_ingestion_plugin`).
 
 ## Documentation & Samples
 - Publish sample pipelines that combine the SDK with the Neo4j Async Java driver and Apache Kafka connectors.

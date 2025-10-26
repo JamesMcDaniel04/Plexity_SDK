@@ -1178,6 +1178,32 @@ class PlexityClient:
             params["level"] = str(int(level))
         return self._request("GET", "/graphrag/communities", params=params)
 
+    def recommend_graphrag_job_slices(
+        self,
+        *,
+        org_id: Optional[str] = None,
+        team_id: Optional[str] = None,
+        environment: Optional[str] = None,
+        labels: Optional[Iterable[str]] = None,
+        limit: Optional[int] = None,
+    ) -> JSONValue:
+        params = self._graphrag_context_query(org_id, team_id, environment)
+        if labels:
+            values = [str(value) for value in labels if value]
+            if values:
+                params["labels"] = ",".join(values)
+        if limit is not None:
+            params["limit"] = str(int(limit))
+        return self._request("GET", "/graphrag/incremental/jobs/recommendations", params=params or None)
+
+    def create_graphrag_incremental_job(self, **payload: Any) -> JSONValue:
+        body = {key: value for key, value in payload.items() if value is not None}
+        return self._request("POST", "/graphrag/incremental/jobs", json_payload=body)
+
+    def trigger_graphrag_incremental_job_slice(self, **payload: Any) -> JSONValue:
+        body = {key: value for key, value in payload.items() if value is not None}
+        return self._request("POST", "/graphrag/incremental/jobs/slices", json_payload=body)
+
     # Executions ----------------------------------------------------------------
     def list_executions(
         self,
