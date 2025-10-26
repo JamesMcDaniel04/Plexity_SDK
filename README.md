@@ -92,3 +92,7 @@ async def main():
 
 asyncio.run(main())
 ```
+
+### Developer Layer Roadmap
+
+Track the upcoming SDK and GraphRAG developer initiatives in [`docs/SDK_INITIATIVES.md`](docs/SDK_INITIATIVES.md). The plan covers the package split, Neo4j-first APIs, language wrappers, and enterprise reference architectures.
